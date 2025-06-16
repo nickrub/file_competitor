@@ -10,7 +10,7 @@ let anagraficaData = []; // Array per gestione anagrafica
 // Costanti per localStorage
 const STORAGE_KEY = 'gaming_analytics_data';
 const ANAGRAFICA_STORAGE_KEY = 'gaming_analytics_anagrafica';
-const STORAGE_VERSION = '2.3'; // Aggiornata per fix calcoli numerici
+const STORAGE_VERSION = '2.4'; // Aggiornata per supporto formato ippico
 
 // Mappa per conversione mesi
 const monthNames = {
@@ -338,7 +338,8 @@ function loadStoredData() {
                     canale: item.canale || 'fisico',
                     quarterYear: item.quarterYear || `${item.quarter}/${item.year}`,
                     concessionarioNome: item.concessionarioNome || item.ragioneSociale,
-                    concessionarioProprietà: item.concessionarioProprietà || 'Non specificato'
+                    concessionarioProprietà: item.concessionarioProprietà || 'Non specificato',
+                    gameNameComplete: item.gameNameComplete || item.gameName
                 }));
                 
                 if (allData.length > 0) {
@@ -398,7 +399,9 @@ function updateDataStatus() {
         const uniqueFiles = [...new Set(allData.map(item => item.fileName))].length;
         const channels = [...new Set(allData.map(item => item.canale))];
         const dateRange = getDateRange();
-        statusDiv.innerHTML = `📊 ${allData.length} record da ${uniqueFiles} file | 🌐 ${channels.map(c => channelNames[c] || c).join(', ')} | 📅 ${dateRange} | 💾 Salvato automaticamente`;
+        const hippoCount = allData.filter(item => item.fileFormat === 'hippoFormat').length;
+        const hippoText = hippoCount > 0 ? ` | 🎯 ${hippoCount} ippici` : '';
+        statusDiv.innerHTML = `📊 ${allData.length} record da ${uniqueFiles} file | 🌐 ${channels.map(c => channelNames[c] || c).join(', ')} | 📅 ${dateRange}${hippoText} | 💾 Salvato automaticamente`;
     } else {
         statusDiv.innerHTML = '💡 Nessun dato caricato';
     }
@@ -443,9 +446,11 @@ async function processFiles() {
             const enrichedData = newData.map(item => enrichDataWithAnagrafica(item));
             
             // Aggiungi ai dati esistenti evitando duplicati
-            const existingKeys = new Set(allData.map(item => `${item.fileName}-${item.codiceConcessione}-${item.monthYear}`));
+            const existingKeys = new Set(allData.map(item => 
+                `${item.fileName}-${item.codiceConcessione}-${item.monthYear}-${item.tipoGioco || 'standard'}`
+            ));
             const uniqueNewData = enrichedData.filter(item => 
-                !existingKeys.has(`${item.fileName}-${item.codiceConcessione}-${item.monthYear}`)
+                !existingKeys.has(`${item.fileName}-${item.codiceConcessione}-${item.monthYear}-${item.tipoGioco || 'standard'}`)
             );
             
             allData.push(...uniqueNewData);
@@ -463,6 +468,28 @@ async function processFiles() {
     }
 }
 
+// 🆕 Funzione per riconoscere il formato ippico
+function isHippoFormat(jsonData) {
+    if (jsonData.length < 4) return false;
+    
+    // Controlla se la riga 0 contiene "Scommesse Ippica d'agenzia"
+    const titleRow = jsonData[0][0] || '';
+    if (!titleRow.includes('Scommesse Ippica')) return false;
+    
+    // Controlla se ci sono righe con QF, TOTALIZZATORE, MULTIPLA nella colonna C (indice 2)
+    for (let i = 4; i < Math.min(jsonData.length, 10); i++) {
+        const row = jsonData[i];
+        if (row && row[2]) {
+            const tipoGioco = row[2].toString().trim();
+            if (tipoGioco === 'QF' || tipoGioco === 'TOTALIZZATORE' || tipoGioco === 'MULTIPLA') {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 function readExcelFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -477,9 +504,15 @@ function readExcelFile(file) {
                 // Riconosce il formato basandosi sulla struttura
                 let parsedData;
                 
+                // 🆕 CONTROLLO PER FORMATO IPPICO
+                if (isHippoFormat(jsonData)) {
+                    console.log(`Riconosciuto formato IPPICO per file: ${file.name}`);
+                    parsedData = parseHippoFormatExcelData(jsonData, file.name);
+                }
                 // Controlla se è il nuovo formato (riga 1 contiene "Periodo da")
-                if (jsonData.length > 1 && jsonData[1][0] && 
-                    jsonData[1][0].toString().includes('Periodo da')) {
+                else if (jsonData.length > 1 && jsonData[1][0] && 
+                    jsonData[1][0].toString().includes('Periodo da') && 
+                    !jsonData[1][0].toString().includes('Scommesse Ippica')) {
                     
                     console.log(`Riconosciuto nuovo formato per file: ${file.name}`);
                     parsedData = parseNewFormatExcelData(jsonData, file.name);
@@ -537,6 +570,7 @@ function parseExcelData(jsonData, fileName) {
     return dataRows.map(row => ({
         fileName: fileName,
         gameName: gameName,
+        gameNameComplete: gameName,
         month: month,
         year: year,
         monthYear: `${month}/${year}`,
@@ -550,7 +584,7 @@ function parseExcelData(jsonData, fileName) {
         percentualeSpesa: row[5]?.toString() || '',
         monthName: monthNames[month] || month,
         quarterName: quarterNames[quarter] || quarter,
-        isNegativeSpesa: parseItalianNumber(row[4]) < 0, // ✅ CORREZIONE
+        isNegativeSpesa: parseItalianNumber(row[4]) < 0,
         fileFormat: 'oldFormat'
     }));
 }
@@ -596,6 +630,7 @@ function parseNewFormatExcelData(jsonData, fileName) {
     return dataRows.map(row => ({
         fileName: fileName,
         gameName: gameName,
+        gameNameComplete: gameName,
         month: month,
         year: year,
         monthYear: `${month}/${year}`,
@@ -609,9 +644,86 @@ function parseNewFormatExcelData(jsonData, fileName) {
         percentualeSpesa: row[5]?.toString() || '',
         monthName: monthNames[month] || month,
         quarterName: quarterNames[quarter] || quarter,
-        isNegativeSpesa: parseItalianNumber(row[4]) < 0, // ✅ CORREZIONE
+        isNegativeSpesa: parseItalianNumber(row[4]) < 0,
         fileFormat: 'newFormat' // Flag per identificare il nuovo formato
     }));
+}
+
+// 🆕 Nuova funzione per il parsing del formato ippico
+function parseHippoFormatExcelData(jsonData, fileName) {
+    if (jsonData.length < 5) {
+        throw new Error(`File ${fileName}: formato ippico non valido (troppo poche righe)`);
+    }
+
+    // Estrazione del nome del gioco dalla prima riga
+    const titleRow = jsonData[0][0] || '';
+    const gameName = 'Scommesse Ippica d\'agenzia'; // Nome fisso per il gioco ippico
+
+    // Estrazione del periodo dalla seconda riga
+    const periodRow = jsonData[1][0] || '';
+    const monthMatch = periodRow.match(/(\w+)\s+(\d{4})/);
+    
+    let month = 'Unknown', year = 'Unknown';
+    if (monthMatch) {
+        const monthNamesItalian = {
+            'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
+            'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
+            'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12'
+        };
+        
+        const monthName = monthMatch[1].toLowerCase();
+        month = monthNamesItalian[monthName] || 'Unknown';
+        year = monthMatch[2];
+    }
+
+    // Headers alla riga 3, dati dalla riga 4
+    const headers = jsonData[3];
+    if (!headers || headers.length < 7) {
+        throw new Error(`File ${fileName}: headers non trovati o incompleti per formato ippico`);
+    }
+
+    // Filtra le righe con dati validi
+    const dataRows = jsonData.slice(4).filter(row => 
+        row && row[0] && row[1] && row[2] && 
+        (row[2] === 'QF' || row[2] === 'TOTALIZZATORE' || row[2] === 'MULTIPLA')
+    );
+    
+    const quarter = getQuarter(month);
+    const quarterYear = `${quarter}/${year}`;
+    
+    return dataRows.map(row => {
+        const tipoGioco = row[2].toString().trim();
+        
+        // Mappa i nomi dei tipi di gioco
+        const tipoGiocoMappings = {
+            'QF': '🎯 Quota Fissa',
+            'TOTALIZZATORE': '🎲 Totalizzatore', 
+            'MULTIPLA': '🎪 Multipla'
+        };
+        
+        return {
+            fileName: fileName,
+            gameName: gameName,
+            tipoGioco: tipoGioco,
+            tipoGiocoName: tipoGiocoMappings[tipoGioco] || tipoGioco,
+            gameNameComplete: `${gameName} - ${tipoGiocoMappings[tipoGioco] || tipoGioco}`, // Nome completo per i filtri
+            month: month,
+            year: year,
+            monthYear: `${month}/${year}`,
+            quarter: quarter,
+            quarterYear: quarterYear,
+            codiceConcessione: row[0]?.toString().trim() || '',
+            ragioneSociale: row[1]?.toString().trim() || '',
+            importoRaccolta: convertToItalianNumber(row[3]), // Colonna D (indice 3)
+            percentualeRaccolta: row[4]?.toString() || '',    // Colonna E (indice 4)
+            importoSpesa: convertToItalianNumber(row[5]),     // Colonna F (indice 5)
+            percentualeSpesa: row[6]?.toString() || '',       // Colonna G (indice 6)
+            monthName: monthNames[month] || month,
+            quarterName: quarterNames[quarter] || quarter,
+            isNegativeSpesa: parseItalianNumber(row[5]) < 0,
+            fileFormat: 'hippoFormat' // Flag per identificare il formato ippico
+        };
+    });
 }
 
 // FUNZIONE CORRETTA PER LA CONVERSIONE DEI NUMERI IN FORMATO ITALIANO (PER DISPLAY)
@@ -774,7 +886,7 @@ function getCurrentQuarter() {
 // ===== GESTIONE FILTRI MIGLIORATI =====
 
 function populateFilters() {
-    const games = [...new Set(allData.map(item => item.gameName))].sort();
+    const games = [...new Set(allData.map(item => item.gameNameComplete || item.gameName))].sort();
     const years = [...new Set(allData.map(item => item.year))].sort();
     const quarters = [...new Set(allData.map(item => item.quarterYear))].sort();
     const months = [...new Set(allData.map(item => item.monthYear))].sort();
@@ -782,6 +894,11 @@ function populateFilters() {
     const concessionari = [...new Set(allData.map(item => item.concessionarioNome))].sort();
     const proprieta = [...new Set(allData.map(item => item.concessionarioProprietà))].sort();
     const ragioneSociali = [...new Set(allData.map(item => item.ragioneSociale))].sort();
+
+    // 🆕 Aggiunto filtro per tipi di gioco ippico se ci sono dati ippici
+    const tipiGiocoIppico = [...new Set(allData
+        .filter(item => item.fileFormat === 'hippoFormat')
+        .map(item => item.tipoGiocoName))].sort();
 
     populateMultiSelect('gameFilter', games, true);
     populateMultiSelect('yearFilter', years, true);
@@ -797,6 +914,17 @@ function populateFilters() {
     populateMultiSelect('concessionaryFilter', concessionari, true);
     populateMultiSelect('proprietaFilter', proprieta, true);
     populateMultiSelect('ragioneSocialeFilter', ragioneSociali, true);
+    
+    // 🆕 Mostra filtro tipo gioco solo se ci sono dati ippici
+    const tipoGiocoFilterDiv = document.getElementById('tipoGiocoFilterDiv');
+    if (tipiGiocoIppico.length > 0) {
+        if (tipoGiocoFilterDiv) {
+            tipoGiocoFilterDiv.style.display = 'block';
+            populateMultiSelect('tipoGiocoFilter', tipiGiocoIppico, true);
+        }
+    } else if (tipoGiocoFilterDiv) {
+        tipoGiocoFilterDiv.style.display = 'none';
+    }
     
     updateFilterCounts();
 }
@@ -916,8 +1044,9 @@ function updateFilterCounts() {
     const concessionaryCountEl = document.getElementById('concessionaryCount');
     const proprietaCountEl = document.getElementById('proprietaCount');
     const ragioneSocialeCountEl = document.getElementById('ragioneSocialeCount');
+    const tipoGiocoCountEl = document.getElementById('tipoGiocoCount');
 
-    if (gameCountEl) gameCountEl.textContent = `(${[...new Set(allData.map(item => item.gameName))].length})`;
+    if (gameCountEl) gameCountEl.textContent = `(${[...new Set(allData.map(item => item.gameNameComplete || item.gameName))].length})`;
     if (yearCountEl) yearCountEl.textContent = `(${[...new Set(allData.map(item => item.year))].length})`;
     if (quarterCountEl) quarterCountEl.textContent = `(${[...new Set(allData.map(item => item.quarterYear))].length})`;
     if (monthCountEl) monthCountEl.textContent = `(${[...new Set(allData.map(item => item.monthYear))].length})`;
@@ -925,6 +1054,15 @@ function updateFilterCounts() {
     if (concessionaryCountEl) concessionaryCountEl.textContent = `(${[...new Set(allData.map(item => item.concessionarioNome))].length})`;
     if (proprietaCountEl) proprietaCountEl.textContent = `(${[...new Set(allData.map(item => item.concessionarioProprietà))].length})`;
     if (ragioneSocialeCountEl) ragioneSocialeCountEl.textContent = `(${[...new Set(allData.map(item => item.ragioneSociale))].length})`;
+
+    // 🆕 Aggiunto conteggio per tipi di gioco ippico
+    const tipiGiocoIppico = [...new Set(allData
+        .filter(item => item.fileFormat === 'hippoFormat')
+        .map(item => item.tipoGiocoName))];
+        
+    if (tipoGiocoCountEl && tipiGiocoIppico.length > 0) {
+        tipoGiocoCountEl.textContent = `(${tipiGiocoIppico.length})`;
+    }
 }
 
 function getSelectedValues(selectId) {
@@ -989,16 +1127,23 @@ function applyFilters() {
     const concessionaryFilter = getSelectedValues('concessionaryFilter');
     const proprietaFilter = getSelectedValues('proprietaFilter');
     const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
+    const tipoGiocoFilter = getSelectedValues('tipoGiocoFilter'); // 🆕
 
     filteredData = allData.filter(item => {
-        return gameFilter.includes(item.gameName) &&
+        const gameToCheck = item.gameNameComplete || item.gameName;
+        const tipoGiocoMatch = item.fileFormat === 'hippoFormat' ? 
+            (tipoGiocoFilter.length === 0 || tipoGiocoFilter.includes(item.tipoGiocoName)) : 
+            true; // Se non è formato ippico, passa sempre il filtro tipo gioco
+            
+        return gameFilter.includes(gameToCheck) &&
                yearFilter.includes(item.year) &&
                quarterFilter.includes(item.quarterYear) &&
                monthFilter.includes(item.monthYear) &&
                channelFilter.includes(item.canale) &&
                concessionaryFilter.includes(item.concessionarioNome) &&
                proprietaFilter.includes(item.concessionarioProprietà) &&
-               ragioneSocialeFilter.includes(item.ragioneSociale);
+               ragioneSocialeFilter.includes(item.ragioneSociale) &&
+               tipoGiocoMatch; // 🆕
     });
 
     updateDisplays();
@@ -1022,8 +1167,9 @@ function updateActiveFiltersDisplay() {
     const concessionaryFilter = getSelectedValues('concessionaryFilter');
     const proprietaFilter = getSelectedValues('proprietaFilter');
     const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
+    const tipoGiocoFilter = getSelectedValues('tipoGiocoFilter');
     
-    const totalGames = [...new Set(allData.map(item => item.gameName))].length;
+    const totalGames = [...new Set(allData.map(item => item.gameNameComplete || item.gameName))].length;
     const totalYears = [...new Set(allData.map(item => item.year))].length;
     const totalQuarters = [...new Set(allData.map(item => item.quarterYear))].length;
     const totalMonths = [...new Set(allData.map(item => item.monthYear))].length;
@@ -1031,6 +1177,7 @@ function updateActiveFiltersDisplay() {
     const totalConcessionari = [...new Set(allData.map(item => item.concessionarioNome))].length;
     const totalProprieta = [...new Set(allData.map(item => item.concessionarioProprietà))].length;
     const totalRagioneSociali = [...new Set(allData.map(item => item.ragioneSociale))].length;
+    const totalTipiGioco = [...new Set(allData.filter(item => item.fileFormat === 'hippoFormat').map(item => item.tipoGiocoName))].length;
     
     const filtersActive = 
         gameFilter.length < totalGames ||
@@ -1040,17 +1187,20 @@ function updateActiveFiltersDisplay() {
         channelFilter.length < totalChannels ||
         concessionaryFilter.length < totalConcessionari ||
         proprietaFilter.length < totalProprieta ||
-        ragioneSocialeFilter.length < totalRagioneSociali;
+        ragioneSocialeFilter.length < totalRagioneSociali ||
+        (totalTipiGioco > 0 && tipoGiocoFilter.length < totalTipiGioco);
     
     if (filtersActive) {
         activeFiltersDiv.style.display = 'block';
+        const tipoGiocoSummary = totalTipiGioco > 0 ? `<div>🎯 Tipi Gioco: ${tipoGiocoFilter.length}/${totalTipiGioco}</div>` : '';
         summaryDiv.innerHTML = `
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2 text-xs">
                 <div>🎮 Giochi: ${gameFilter.length}/${totalGames}</div>
                 <div>📅 Anni: ${yearFilter.length}/${totalYears}</div>
                 <div>📊 Trimestri: ${quarterFilter.length}/${totalQuarters}</div>
                 <div>🗓️ Mesi: ${monthFilter.length}/${totalMonths}</div>
                 <div>🌐 Canali: ${channelFilter.length}/${totalChannels}</div>
+                ${tipoGiocoSummary}
                 <div>🏢 Concessionari: ${concessionaryFilter.length}/${totalConcessionari}</div>
                 <div>🔑 Proprietà: ${proprietaFilter.length}/${totalProprieta}</div>
                 <div>📄 Rag.Sociali: ${ragioneSocialeFilter.length}/${totalRagioneSociali}</div>
@@ -1117,7 +1267,13 @@ function prepareChartData(metric, groupBy) {
     
     Object.keys(grouped).forEach(groupKey => {
         let label = groupKey;
-        if (groupBy === 'quarterYear') {
+        
+        // 🆕 Gestione etichette per i dati ippici
+        if (groupBy === 'gameNameComplete') {
+            label = groupKey.length > 25 ? groupKey.substring(0, 25) + '...' : groupKey;
+        } else if (groupBy === 'tipoGiocoName') {
+            label = groupKey;
+        } else if (groupBy === 'quarterYear') {
             const [quarter, year] = groupKey.split('/');
             label = `${quarterNames[quarter] || quarter} ${year}`;
         } else if (groupBy === 'monthYear') {
@@ -1159,7 +1315,9 @@ function getGroupByTitle(groupBy) {
         'canale': 'Canale',
         'quarterYear': 'Trimestre',
         'monthYear': 'Mese',
-        'concessionarioProprietà': 'Proprietà'
+        'concessionarioProprietà': 'Proprietà',
+        'gameNameComplete': 'Gioco', // 🆕
+        'tipoGiocoName': 'Tipo Gioco Ippico' // 🆕
     };
     return titles[groupBy] || groupBy;
 }
@@ -1200,7 +1358,8 @@ function updateTable() {
     const tableHead = document.getElementById('tableHead');
     const tableBody = document.getElementById('tableBody');
     
-    const headers = ['Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    // 🆕 Headers aggiornati per includere tipo gioco
+    const headers = ['Gioco', 'Tipo', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     tableHead.innerHTML = `
         <tr>
             ${headers.map((header, index) => `
@@ -1214,9 +1373,17 @@ function updateTable() {
     `;
     
     const sortedData = getSortedData();
-    tableBody.innerHTML = sortedData.map(row => `
-        <tr class="hover:bg-gray-50">
-            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.gameName.length > 15 ? row.gameName.substring(0, 15) + '...' : row.gameName}</td>
+    tableBody.innerHTML = sortedData.map(row => {
+        const tipoGiocoDisplay = row.fileFormat === 'hippoFormat' ? 
+            `<span class="tipo-gioco-badge tipo-${row.tipoGioco?.toLowerCase()}">${row.tipoGiocoName || ''}</span>` : 
+            '-';
+        
+        const rowClass = row.fileFormat === 'hippoFormat' ? 'hippo-row' : '';
+        
+        return `
+        <tr class="hover:bg-gray-50 ${rowClass}">
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${(row.gameNameComplete || row.gameName).length > 15 ? (row.gameNameComplete || row.gameName).substring(0, 15) + '...' : (row.gameNameComplete || row.gameName)}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${tipoGiocoDisplay}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.year}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.quarter}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.monthName}</td>
@@ -1232,11 +1399,12 @@ function updateTable() {
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 ${row.isNegativeSpesa ? 'negative-value' : ''}">${row.importoSpesa}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.percentualeSpesa}</td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function sortTable(columnIndex) {
-    const columns = ['gameName', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'concessionarioNome', 'ragioneSociale', 'concessionarioProprietà', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
+    const columns = ['gameNameComplete', 'tipoGiocoName', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'concessionarioNome', 'ragioneSociale', 'concessionarioProprietà', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
     const column = columns[columnIndex];
     
     if (sortColumn === column) {
@@ -1257,6 +1425,17 @@ function getSortedData() {
     return [...filteredData].sort((a, b) => {
         let valueA = a[sortColumn];
         let valueB = b[sortColumn];
+        
+        // 🆕 Gestione ordinamento per tipo gioco
+        if (sortColumn === 'tipoGiocoName') {
+            valueA = a.tipoGiocoName || '';
+            valueB = b.tipoGiocoName || '';
+        }
+        
+        if (sortColumn === 'gameNameComplete') {
+            valueA = a.gameNameComplete || a.gameName;
+            valueB = b.gameNameComplete || b.gameName;
+        }
         
         if (sortColumn.includes('importo')) {
             valueA = parseItalianNumber(valueA); // ✅ CORREZIONE QUI
@@ -1293,6 +1472,15 @@ function updateSummaryStats() {
         </div>
     `).join('');
     
+    // 🆕 Statistiche per tipi di gioco ippico
+    const tipoGiocoStats = stats.byTipoGioco.map(tipo => `
+        <div class="bg-purple-500 bg-opacity-20 rounded-lg p-4">
+            <h4 class="text-sm font-medium text-purple-200">${tipo.name}</h4>
+            <p class="text-lg font-bold text-white">${tipo.records} record</p>
+            <p class="text-xs text-purple-100">Spesa: ${tipo.spesa}</p>
+        </div>
+    `).join('');
+    
     summaryDiv.innerHTML = `
         <div class="bg-blue-500 bg-opacity-20 rounded-lg p-4">
             <h4 class="text-sm font-medium text-blue-200">Totale Record</h4>
@@ -1311,6 +1499,7 @@ function updateSummaryStats() {
             <p class="text-2xl font-bold text-white">${stats.uniqueConcessionari}</p>
         </div>
         ${channelStats}
+        ${tipoGiocoStats}
     `;
     
     updateNegativeValuesAlert(stats.negativeValues);
@@ -1346,6 +1535,21 @@ function calculateStats() {
         };
     });
     
+    // 🆕 Statistiche per tipi di gioco ippico
+    const hippoData = filteredData.filter(item => item.fileFormat === 'hippoFormat');
+    const byTipoGioco = hippoData.length > 0 ? Object.entries(_.groupBy(hippoData, 'tipoGiocoName')).map(([tipo, records]) => {
+        const spesaSum = records.reduce((sum, item) => {
+            const value = parseItalianNumber(item.importoSpesa);
+            return sum + value;
+        }, 0);
+        
+        return {
+            name: tipo,
+            records: records.length,
+            spesa: spesaSum.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+        };
+    }) : [];
+    
     return {
         totalRecords,
         uniqueConcessionari,
@@ -1353,7 +1557,8 @@ function calculateStats() {
         totalSpesa: totalSpesa.toLocaleString('it-IT', { minimumFractionDigits: 2 }),
         hasNegativeValues: negativeValues.length > 0,
         negativeValues,
-        byChannel
+        byChannel,
+        byTipoGioco // 🆕
     };
 }
 
@@ -1364,7 +1569,7 @@ function updateNegativeValuesAlert(negativeValues) {
     if (negativeValues.length > 0) {
         alertDiv.style.display = 'block';
         listDiv.innerHTML = negativeValues.map(item => 
-            `• ${item.concessionarioNome} (${item.channelName}): ${item.importoSpesa} (${item.monthYear})`
+            `• ${item.concessionarioNome} (${item.channelName})${item.tipoGiocoName ? ` - ${item.tipoGiocoName}` : ''}: ${item.importoSpesa} (${item.monthYear})`
         ).join('<br>');
     } else {
         alertDiv.style.display = 'none';
@@ -1391,11 +1596,12 @@ function downloadTable(format) {
 }
 
 function downloadCSV() {
-    const headers = ['Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    const headers = ['Gioco', 'Tipo Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     const csvContent = [
         headers.join(','),
         ...filteredData.map(row => [
-            `"${row.gameName}"`,
+            `"${row.gameNameComplete || row.gameName}"`,
+            `"${row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : ''}"`, // 🆕
             `"${row.year}"`,
             `"${row.quarter}"`,
             `"${row.monthName}"`,
@@ -1416,7 +1622,8 @@ function downloadCSV() {
 
 function downloadExcel() {
     const worksheet = XLSX.utils.json_to_sheet(filteredData.map(row => ({
-        'Gioco': row.gameName,
+        'Gioco': row.gameNameComplete || row.gameName,
+        'Tipo Gioco': row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : '', // 🆕
         'Anno': row.year,
         'Trimestre': row.quarter,
         'Mese': row.monthName,
