@@ -10,7 +10,7 @@ let anagraficaData = []; // Array per gestione anagrafica
 // Costanti per localStorage
 const STORAGE_KEY = 'gaming_analytics_data';
 const ANAGRAFICA_STORAGE_KEY = 'gaming_analytics_anagrafica';
-const STORAGE_VERSION = '2.1'; // Aggiornata per nuovo formato file
+const STORAGE_VERSION = '2.2'; // Aggiornata per fix numeri
 
 // Mappa per conversione mesi
 const monthNames = {
@@ -614,68 +614,63 @@ function parseNewFormatExcelData(jsonData, fileName) {
     }));
 }
 
+// FUNZIONE CORRETTA PER LA CONVERSIONE DEI NUMERI
 function convertToItalianNumber(value) {
     if (value === null || value === undefined || value === '') return '0,00';
-    
-    let numStr = value.toString().trim();
     
     // Se è già un numero JavaScript, formattalo in italiano
     if (typeof value === 'number') {
         return value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     
-    // Rimuovi spazi e caratteri non numerici tranne punti e virgole
-    numStr = numStr.replace(/[^\d.,+-]/g, '');
+    let numStr = value.toString().trim();
     
-    // Se è vuoto dopo la pulizia, ritorna zero
+    // Se è vuoto, ritorna zero
     if (!numStr) return '0,00';
     
-    // Riconosce i diversi formati numerici
+    // Pattern per riconoscere formato italiano: 54.548.383,95
+    // Uno o più gruppi di 1-3 cifre separati da punti, seguito da virgola e decimali
+    const italianPattern = /^[+-]?\d{1,3}(\.\d{3})*(,\d+)?$/;
     
-    // Formato italiano: 54.548.383,95 (punti per migliaia, virgola per decimali)
-    // Pattern: uno o più gruppi di cifre separati da punti, seguito opzionalmente da virgola e decimali
-    const formatoItalianoPattern = /^[+-]?(\d{1,3}(\.\d{3})*)(,\d+)?$/;
+    // Pattern per formato americano: 54,548,383.95
+    // Uno o più gruppi di 1-3 cifre separati da virgole, seguito da punto e decimali
+    const americanPattern = /^[+-]?\d{1,3}(,\d{3})*(\.\d+)?$/;
     
-    // Formato americano: 54,548,383.95 (virgole per migliaia, punto per decimali)
-    const formatoAmericanoPattern = /^[+-]?(\d{1,3}(,\d{3})*)(\.\d+)?$/;
+    // Pattern per numero semplice: 12345.67 o 12345,67 o 12345
+    const simplePattern = /^[+-]?\d+([.,]\d+)?$/;
     
-    // Numero semplice senza separatori: 12345.67 o 12345,67
-    const numeroSemplicePattern = /^[+-]?\d+[.,]?\d*$/;
-    
-    if (formatoItalianoPattern.test(numStr)) {
-        // È già in formato italiano corretto, non fare nulla
-        console.log(`Numero già in formato italiano: ${numStr}`);
+    // Controlla se è già in formato italiano - NON MODIFICARE
+    if (italianPattern.test(numStr)) {
+        console.log(`Numero già in formato italiano: ${numStr} - mantenuto invariato`);
         return numStr;
-        
-    } else if (formatoAmericanoPattern.test(numStr)) {
-        // Formato americano: converti in italiano
+    }
+    
+    // Controlla se è in formato americano - CONVERTI
+    if (americanPattern.test(numStr)) {
         console.log(`Convertendo da formato americano: ${numStr}`);
         
-        // Rimuovi le virgole (separatori migliaia) e sostituisci il punto con virgola
-        let converted = numStr.replace(/,/g, '').replace('.', ',');
+        // Separa parte intera e decimale
+        const parts = numStr.split('.');
+        const integerPart = parts[0].replace(/,/g, ''); // Rimuovi virgole (separatori migliaia)
+        const decimalPart = parts[1] || '00';
         
-        // Aggiungi i punti come separatori delle migliaia se necessario
-        const parts = converted.split(',');
-        const integerPart = parts[0];
-        const decimalPart = parts[1] || '';
-        
-        // Formatta la parte intera con i punti
+        // Ricomponi in formato italiano
         const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        
-        converted = decimalPart ? `${formattedInteger},${decimalPart}` : formattedInteger;
-        console.log(`Convertito in: ${converted}`);
-        return converted;
-        
-    } else if (numeroSemplicePattern.test(numStr)) {
-        // Numero semplice: gestisci il separatore decimale
+        const result = `${formattedInteger},${decimalPart}`;
+        console.log(`Convertito in: ${result}`);
+        return result;
+    }
+    
+    // Numero semplice - aggiungi formattazione italiana se necessario
+    if (simplePattern.test(numStr)) {
         console.log(`Numero semplice: ${numStr}`);
         
-        // Se usa il punto come decimale, convertilo in virgola
-        if (numStr.includes('.') && !numStr.includes(',')) {
+        // Converte punto in virgola per decimali
+        if (numStr.includes('.')) {
             numStr = numStr.replace('.', ',');
         }
         
-        // Aggiungi separatori delle migliaia se il numero è abbastanza grande
+        // Aggiungi separatori migliaia se necessario
         const parts = numStr.split(',');
         const integerPart = parts[0];
         const decimalPart = parts[1] || '';
@@ -688,29 +683,36 @@ function convertToItalianNumber(value) {
         return numStr;
     }
     
-    // Se non riconosce il formato, prova a interpretarlo come numero
-    console.log(`Formato non riconosciuto, tentativo di parsing: ${numStr}`);
+    // Se non riconosce il formato, prova a pulire e convertire
+    console.warn(`Formato non riconosciuto: ${numStr} - tentativo di conversione`);
     
-    // Rimuovi tutti i separatori e prova a fare il parsing
-    const cleanNumber = numStr.replace(/[.,]/g, '');
-    const parsedNumber = parseFloat(cleanNumber);
+    // Rimuovi tutto tranne cifre, punti e virgole
+    const cleaned = numStr.replace(/[^\d.,+-]/g, '');
     
-    if (!isNaN(parsedNumber)) {
-        // Se ha più di 2 cifre, probabilmente i decimali sono le ultime 2
-        if (cleanNumber.length > 2) {
-            const integerPart = cleanNumber.slice(0, -2);
-            const decimalPart = cleanNumber.slice(-2);
-            const formatted = `${integerPart}.${decimalPart}`;
-            const finalNumber = parseFloat(formatted);
-            return finalNumber.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (!cleaned) return '0,00';
+    
+    // Prova a interpretare come numero pulito
+    try {
+        // Se ha più punti che virgole, probabilmente è formato italiano
+        const dots = (cleaned.match(/\./g) || []).length;
+        const commas = (cleaned.match(/,/g) || []).length;
+        
+        if (dots > commas) {
+            // Probabilmente formato italiano - lascia com'è
+            return cleaned;
         } else {
-            return parsedNumber.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            // Probabilmente formato americano - converti
+            const parts = cleaned.split('.');
+            const integerPart = parts[0].replace(/,/g, '');
+            const decimalPart = parts[1] || '00';
+            
+            const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return `${formattedInteger},${decimalPart}`;
         }
+    } catch (error) {
+        console.error(`Errore nella conversione di: ${numStr}`, error);
+        return numStr; // Ritorna il valore originale
     }
-    
-    // Come ultimo tentativo, ritorna il valore originale
-    console.warn(`Impossibile convertire il numero: ${numStr}`);
-    return numStr;
 }
 
 function getQuarter(month) {
