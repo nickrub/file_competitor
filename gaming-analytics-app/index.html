@@ -30,14 +30,134 @@
             margin-left: 5px;
             transition: transform 0.2s;
         }
+        
+        /* Stili migliorati per i filtri */
+        .filter-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .multi-select {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .multi-select-button {
+            width: 100%;
+            padding: 12px 16px;
+            text-align: left;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .multi-select-button:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .multi-select-button:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        .multi-select-dropdown.show {
+            display: block;
+        }
+        
+        .multi-select-option {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .multi-select-option:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .multi-select-option.selected {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+        }
+        
+        .multi-select-checkbox {
+            width: 16px;
+            height: 16px;
+            accent-color: #3b82f6;
+        }
+        
+        .filter-badge {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        
+        .negative-value {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        
+        .data-persistence-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .data-persistence-indicator.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
+    <!-- Indicatore persistenza dati -->
+    <div id="persistenceIndicator" class="data-persistence-indicator">
+        📊 Dati salvati automaticamente
+    </div>
+
     <div class="container mx-auto p-6">
         <!-- Header -->
         <div class="glass-effect rounded-lg p-6 mb-6">
             <h1 class="text-3xl font-bold text-white mb-2">Gaming Analytics Dashboard</h1>
             <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi</p>
+            <div id="dataStatus" class="mt-2 text-sm text-blue-200"></div>
         </div>
 
         <!-- Upload Section -->
@@ -53,44 +173,116 @@
                                transition-colors duration-200">
                     Elabora File
                 </button>
+                <button onclick="clearStoredData()" 
+                        class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg 
+                               transition-colors duration-200">
+                    Cancella Dati
+                </button>
             </div>
             <div id="uploadStatus" class="mt-4 text-sm text-gray-300"></div>
         </div>
 
-        <!-- Filters Section -->
-        <div class="glass-effect rounded-lg p-6 mb-6" id="filtersSection" style="display: none;">
-            <h2 class="text-xl font-semibold text-white mb-4">Filtri</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Filters Section con design migliorato -->
+        <div class="filter-container mb-6" id="filtersSection" style="display: none;">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">Filtri Avanzati</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Filtro Giochi -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Giochi</label>
-                    <select id="gameFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        🎮 Giochi
+                        <span id="gameCount" class="text-blue-600"></span>
+                    </label>
+                    <div class="multi-select" id="gameFilter">
+                        <button type="button" class="multi-select-button" onclick="toggleDropdown('gameFilter')">
+                            <span class="selected-text">Seleziona giochi...</span>
+                            <span class="float-right">▼</span>
+                        </button>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-options"></div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Filtro Anni -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Anni</label>
-                    <select id="yearFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        📅 Anni
+                        <span id="yearCount" class="text-blue-600"></span>
+                    </label>
+                    <div class="multi-select" id="yearFilter">
+                        <button type="button" class="multi-select-button" onclick="toggleDropdown('yearFilter')">
+                            <span class="selected-text">Seleziona anni...</span>
+                            <span class="float-right">▼</span>
+                        </button>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-options"></div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Filtro Mesi -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Mesi</label>
-                    <select id="monthFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        📊 Mesi
+                        <span id="monthCount" class="text-blue-600"></span>
+                    </label>
+                    <div class="multi-select" id="monthFilter">
+                        <button type="button" class="multi-select-button" onclick="toggleDropdown('monthFilter')">
+                            <span class="selected-text">Seleziona mesi...</span>
+                            <span class="float-right">▼</span>
+                        </button>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-options"></div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Filtro Concessionari -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Concessionari</label>
-                    <select id="concessionaryFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        🏢 Concessionari
+                        <span id="concessionaryCount" class="text-blue-600"></span>
+                    </label>
+                    <div class="multi-select" id="concessionaryFilter">
+                        <button type="button" class="multi-select-button" onclick="toggleDropdown('concessionaryFilter')">
+                            <span class="selected-text">Seleziona concessionari...</span>
+                            <span class="float-right">▼</span>
+                        </button>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-options"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="mt-4 flex space-x-4">
+
+            <!-- Pulsanti azione -->
+            <div class="mt-6 flex flex-wrap gap-4">
                 <button onclick="applyFilters()" 
-                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
-                    Applica Filtri
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg 
+                               transition-colors duration-200 font-medium">
+                    ✅ Applica Filtri
                 </button>
                 <button onclick="resetFilters()" 
-                        class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg">
-                    Reset
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg 
+                               transition-colors duration-200 font-medium">
+                    🔄 Reset Filtri
                 </button>
+                <button onclick="selectAllFilters()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg 
+                               transition-colors duration-200 font-medium">
+                    ☑️ Seleziona Tutto
+                </button>
+                <button onclick="deselectAllFilters()" 
+                        class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg 
+                               transition-colors duration-200 font-medium">
+                    ☐ Deseleziona Tutto
+                </button>
+            </div>
+
+            <!-- Riassunto filtri attivi -->
+            <div id="activeFilters" class="mt-4 p-4 bg-gray-50 rounded-lg" style="display: none;">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">Filtri Attivi:</h4>
+                <div id="filterSummary" class="text-sm text-gray-600"></div>
             </div>
         </div>
 
@@ -99,26 +291,24 @@
             <!-- Chart Container -->
             <div class="glass-effect rounded-lg p-6">
                 <h3 class="text-lg font-semibold text-white mb-4">Grafici</h3>
-                <div class="mb-4">
-                    <select id="chartType" class="w-full p-2 border border-gray-300 rounded-md bg-white">
-                        <option value="bar">Grafico a Barre</option>
-                        <option value="line">Grafico a Linee</option>
-                        <option value="pie">Grafico a Torta</option>
-                        <option value="doughnut">Grafico a Ciambella</option>
+                <div class="mb-4 grid grid-cols-2 gap-4">
+                    <select id="chartType" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
+                        <option value="bar">📊 Grafico a Barre</option>
+                        <option value="line">📈 Grafico a Linee</option>
+                        <option value="pie">🥧 Grafico a Torta</option>
+                        <option value="doughnut">🍩 Grafico a Ciambella</option>
                     </select>
-                </div>
-                <div class="mb-4">
-                    <select id="chartMetric" class="w-full p-2 border border-gray-300 rounded-md bg-white">
-                        <option value="importoRaccolta">Importo Raccolta</option>
-                        <option value="importoSpesa">Importo Spesa</option>
-                        <option value="percentualeRaccolta">Percentuale Raccolta</option>
-                        <option value="percentualeSpesa">Percentuale Spesa</option>
+                    <select id="chartMetric" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
+                        <option value="importoRaccolta">💰 Importo Raccolta</option>
+                        <option value="importoSpesa">💸 Importo Spesa</option>
+                        <option value="percentualeRaccolta">📈 Percentuale Raccolta</option>
+                        <option value="percentualeSpesa">📉 Percentuale Spesa</option>
                     </select>
                 </div>
                 <canvas id="mainChart" width="400" height="300"></canvas>
                 <button onclick="downloadChart()" 
                         class="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
-                    Scarica Grafico
+                    📥 Scarica Grafico
                 </button>
             </div>
 
@@ -127,6 +317,10 @@
                 <h3 class="text-lg font-semibold text-white mb-4">Statistiche Riassuntive</h3>
                 <div id="summaryStats" class="space-y-4">
                     <!-- Stats will be populated here -->
+                </div>
+                <div id="negativeValuesAlert" class="mt-4 p-3 bg-yellow-500 bg-opacity-20 rounded-lg" style="display: none;">
+                    <h4 class="text-yellow-200 font-medium">⚠️ Valori Negativi Rilevati</h4>
+                    <div id="negativeValuesList" class="text-yellow-100 text-sm mt-2"></div>
                 </div>
             </div>
         </div>
@@ -138,11 +332,11 @@
                 <div class="space-x-2">
                     <button onclick="downloadTable('csv')" 
                             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
-                        Scarica CSV
+                        📊 Scarica CSV
                     </button>
                     <button onclick="downloadTable('excel')" 
                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                        Scarica Excel
+                        📈 Scarica Excel
                     </button>
                 </div>
             </div>
