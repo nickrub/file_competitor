@@ -6,11 +6,15 @@ let sortColumn = null;
 let sortDirection = 'asc';
 let anagraficaConcessioni = {}; // Mappa per anagrafica concessioni
 let anagraficaData = []; // Array per gestione anagrafica
+let nomiGiochiMapping = {}; // 🆕 Mappa per nomi giochi
+let compartiMapping = {}; // 🆕 Mappa per comparti
 
 // Costanti per localStorage
 const STORAGE_KEY = 'gaming_analytics_data';
 const ANAGRAFICA_STORAGE_KEY = 'gaming_analytics_anagrafica';
-const STORAGE_VERSION = '2.4'; // Aggiornata per supporto formato ippico
+const NOMI_GIOCHI_STORAGE_KEY = 'gaming_analytics_nomi_giochi';
+const COMPARTI_STORAGE_KEY = 'gaming_analytics_comparti';
+const STORAGE_VERSION = '2.5'; // Aggiornata per mappature
 
 // Mappa per conversione mesi
 const monthNames = {
@@ -39,6 +43,8 @@ const channelNames = {
 document.addEventListener('DOMContentLoaded', function() {
     loadStoredData();
     loadStoredAnagrafica();
+    loadStoredNomiGiochi();
+    loadStoredComparti();
     setupEventListeners();
 });
 
@@ -56,6 +62,231 @@ function setupEventListeners() {
             });
         }
     });
+}
+
+// ===== 🆕 GESTIONE NOMI GIOCHI =====
+
+function loadStoredNomiGiochi() {
+    try {
+        const storedNomiGiochi = localStorage.getItem(NOMI_GIOCHI_STORAGE_KEY);
+        if (storedNomiGiochi) {
+            const parsed = JSON.parse(storedNomiGiochi);
+            nomiGiochiMapping = parsed.data || {};
+            console.log(`Caricata mappatura nomi giochi con ${Object.keys(nomiGiochiMapping).length} voci`);
+        }
+    } catch (error) {
+        console.error('Errore nel caricamento nomi giochi:', error);
+    }
+}
+
+function saveNomiGiochiToStorage() {
+    try {
+        const dataToSave = {
+            version: STORAGE_VERSION,
+            timestamp: new Date().toISOString(),
+            data: nomiGiochiMapping
+        };
+        localStorage.setItem(NOMI_GIOCHI_STORAGE_KEY, JSON.stringify(dataToSave));
+        console.log('Mappatura nomi giochi salvata');
+    } catch (error) {
+        console.error('Errore nel salvataggio nomi giochi:', error);
+    }
+}
+
+async function loadNomiGiochiFromExcel() {
+    const fileInput = document.getElementById('nomiGiochiFileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showStatus('Seleziona un file Excel per caricare i nomi giochi', 'error');
+        return;
+    }
+    
+    try {
+        showStatus('Caricamento nomi giochi in corso...', 'info');
+        const nomiGiochiFromExcel = await readNomiGiochiFromExcel(file);
+        
+        nomiGiochiMapping = nomiGiochiFromExcel;
+        saveNomiGiochiToStorage();
+        
+        // Aggiorna i dati esistenti se ci sono
+        if (allData.length > 0) {
+            allData = allData.map(item => applyGameNameMapping(item));
+            saveDataToStorage();
+            populateFilters();
+            applyFilters();
+        }
+        
+        showStatus(`Caricata mappatura con ${Object.keys(nomiGiochiMapping).length} nomi giochi`, 'success');
+    } catch (error) {
+        showStatus(`Errore nel caricamento nomi giochi: ${error.message}`, 'error');
+    }
+}
+
+function readNomiGiochiFromExcel(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                const mapping = {};
+                
+                // Salta la prima riga (headers) e processa i dati
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (row && row[0] && row[1]) {
+                        const nomeOriginale = row[0].toString().trim();
+                        const nomeMostrato = row[1].toString().trim();
+                        mapping[nomeOriginale] = nomeMostrato;
+                    }
+                }
+                
+                resolve(mapping);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        
+        reader.onerror = function() {
+            reject(new Error(`Errore nella lettura del file ${file.name}`));
+        };
+        
+        reader.readAsBinaryString(file);
+    });
+}
+
+// ===== 🆕 GESTIONE COMPARTI =====
+
+function loadStoredComparti() {
+    try {
+        const storedComparti = localStorage.getItem(COMPARTI_STORAGE_KEY);
+        if (storedComparti) {
+            const parsed = JSON.parse(storedComparti);
+            compartiMapping = parsed.data || {};
+            console.log(`Caricata mappatura comparti con ${Object.keys(compartiMapping).length} voci`);
+        }
+    } catch (error) {
+        console.error('Errore nel caricamento comparti:', error);
+    }
+}
+
+function saveCompartiToStorage() {
+    try {
+        const dataToSave = {
+            version: STORAGE_VERSION,
+            timestamp: new Date().toISOString(),
+            data: compartiMapping
+        };
+        localStorage.setItem(COMPARTI_STORAGE_KEY, JSON.stringify(dataToSave));
+        console.log('Mappatura comparti salvata');
+    } catch (error) {
+        console.error('Errore nel salvataggio comparti:', error);
+    }
+}
+
+async function loadCompartiFromExcel() {
+    const fileInput = document.getElementById('compartiFileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showStatus('Seleziona un file Excel per caricare i comparti', 'error');
+        return;
+    }
+    
+    try {
+        showStatus('Caricamento comparti in corso...', 'info');
+        const compartiFromExcel = await readCompartiFromExcel(file);
+        
+        compartiMapping = compartiFromExcel;
+        saveCompartiToStorage();
+        
+        // Aggiorna i dati esistenti se ci sono
+        if (allData.length > 0) {
+            allData = allData.map(item => applyCompartoMapping(item));
+            saveDataToStorage();
+            populateFilters();
+            applyFilters();
+        }
+        
+        showStatus(`Caricata mappatura con ${Object.keys(compartiMapping).length} comparti`, 'success');
+    } catch (error) {
+        showStatus(`Errore nel caricamento comparti: ${error.message}`, 'error');
+    }
+}
+
+function readCompartiFromExcel(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                const mapping = {};
+                
+                // Salta la prima riga (headers) e processa i dati
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (row && row[0] && row[1]) {
+                        const nomeGioco = row[0].toString().trim();
+                        const comparto = row[1].toString().trim();
+                        mapping[nomeGioco] = comparto;
+                    }
+                }
+                
+                resolve(mapping);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        
+        reader.onerror = function() {
+            reject(new Error(`Errore nella lettura del file ${file.name}`));
+        };
+        
+        reader.readAsBinaryString(file);
+    });
+}
+
+// ===== 🆕 APPLICAZIONE MAPPATURE =====
+
+function applyGameNameMapping(dataItem) {
+    // Applica la mappatura del nome gioco se esiste
+    const originalGameName = dataItem.gameName;
+    const mappedGameName = nomiGiochiMapping[originalGameName] || originalGameName;
+    
+    return {
+        ...dataItem,
+        gameNameOriginal: originalGameName,
+        gameName: mappedGameName,
+        gameNameComplete: dataItem.fileFormat === 'hippoFormat' ? 
+            `${mappedGameName} - ${dataItem.tipoGiocoName}` : mappedGameName
+    };
+}
+
+function applyCompartoMapping(dataItem) {
+    // Applica la mappatura del comparto se esiste
+    const gameNameForMapping = dataItem.gameName || dataItem.gameNameOriginal;
+    const comparto = compartiMapping[gameNameForMapping] || 'Non classificato';
+    
+    return {
+        ...dataItem,
+        comparto: comparto
+    };
+}
+
+function applyAllMappings(dataItem) {
+    let item = applyGameNameMapping(dataItem);
+    item = applyCompartoMapping(item);
+    return item;
 }
 
 // ===== GESTIONE ANAGRAFICA CONCESSIONI =====
@@ -339,7 +570,8 @@ function loadStoredData() {
                     quarterYear: item.quarterYear || `${item.quarter}/${item.year}`,
                     concessionarioNome: item.concessionarioNome || item.ragioneSociale,
                     concessionarioProprietà: item.concessionarioProprietà || 'Non specificato',
-                    gameNameComplete: item.gameNameComplete || item.gameName
+                    gameNameComplete: item.gameNameComplete || item.gameName,
+                    comparto: item.comparto || 'Non classificato'
                 }));
                 
                 if (allData.length > 0) {
@@ -401,7 +633,9 @@ function updateDataStatus() {
         const dateRange = getDateRange();
         const hippoCount = allData.filter(item => item.fileFormat === 'hippoFormat').length;
         const hippoText = hippoCount > 0 ? ` | 🎯 ${hippoCount} ippici` : '';
-        statusDiv.innerHTML = `📊 ${allData.length} record da ${uniqueFiles} file | 🌐 ${channels.map(c => channelNames[c] || c).join(', ')} | 📅 ${dateRange}${hippoText} | 💾 Salvato automaticamente`;
+        const comparti = [...new Set(allData.map(item => item.comparto))];
+        const compartiText = comparti.length > 1 ? ` | 🏢 ${comparti.length} comparti` : '';
+        statusDiv.innerHTML = `📊 ${allData.length} record da ${uniqueFiles} file | 🌐 ${channels.map(c => channelNames[c] || c).join(', ')} | 📅 ${dateRange}${hippoText}${compartiText} | 💾 Salvato automaticamente`;
     } else {
         statusDiv.innerHTML = '💡 Nessun dato caricato';
     }
@@ -442,8 +676,12 @@ async function processFiles() {
         }
         
         if (newData.length > 0) {
-            // Arricchisci i dati con l'anagrafica
-            const enrichedData = newData.map(item => enrichDataWithAnagrafica(item));
+            // Applica tutte le mappature e arricchimenti
+            const enrichedData = newData.map(item => {
+                let enrichedItem = enrichDataWithAnagrafica(item);
+                enrichedItem = applyAllMappings(enrichedItem);
+                return enrichedItem;
+            });
             
             // Aggiungi ai dati esistenti evitando duplicati
             const existingKeys = new Set(allData.map(item => 
@@ -570,6 +808,7 @@ function parseExcelData(jsonData, fileName) {
     return dataRows.map(row => ({
         fileName: fileName,
         gameName: gameName,
+        gameNameOriginal: gameName,
         gameNameComplete: gameName,
         month: month,
         year: year,
@@ -630,6 +869,7 @@ function parseNewFormatExcelData(jsonData, fileName) {
     return dataRows.map(row => ({
         fileName: fileName,
         gameName: gameName,
+        gameNameOriginal: gameName,
         gameNameComplete: gameName,
         month: month,
         year: year,
@@ -704,6 +944,7 @@ function parseHippoFormatExcelData(jsonData, fileName) {
         return {
             fileName: fileName,
             gameName: gameName,
+            gameNameOriginal: gameName,
             tipoGioco: tipoGioco,
             tipoGiocoName: tipoGiocoMappings[tipoGioco] || tipoGioco,
             gameNameComplete: `${gameName} - ${tipoGiocoMappings[tipoGioco] || tipoGioco}`, // Nome completo per i filtri
@@ -883,7 +1124,7 @@ function getCurrentQuarter() {
     return `${quarter}/${year}`;
 }
 
-// ===== GESTIONE FILTRI MIGLIORATI =====
+// ===== 🆕 GESTIONE FILTRI MIGLIORATI (SU PIÙ RIGHE) =====
 
 function populateFilters() {
     const games = [...new Set(allData.map(item => item.gameNameComplete || item.gameName))].sort();
@@ -894,33 +1135,35 @@ function populateFilters() {
     const concessionari = [...new Set(allData.map(item => item.concessionarioNome))].sort();
     const proprieta = [...new Set(allData.map(item => item.concessionarioProprietà))].sort();
     const ragioneSociali = [...new Set(allData.map(item => item.ragioneSociale))].sort();
+    const comparti = [...new Set(allData.map(item => item.comparto))].sort();
 
     // 🆕 Aggiunto filtro per tipi di gioco ippico se ci sono dati ippici
     const tipiGiocoIppico = [...new Set(allData
         .filter(item => item.fileFormat === 'hippoFormat')
         .map(item => item.tipoGiocoName))].sort();
 
-    populateMultiSelect('gameFilter', games, true);
-    populateMultiSelect('yearFilter', years, true);
-    populateMultiSelect('quarterFilter', quarters, true, (q) => {
+    populateMultiSelectImproved('gameFilter', games, true);
+    populateMultiSelectImproved('yearFilter', years, true);
+    populateMultiSelectImproved('quarterFilter', quarters, true, (q) => {
         const [quarter, year] = q.split('/');
         return `${quarterNames[quarter] || quarter} ${year}`;
     });
-    populateMultiSelect('monthFilter', months, true, (m) => {
+    populateMultiSelectImproved('monthFilter', months, true, (m) => {
         const [month, year] = m.split('/');
         return `${monthNames[month] || month} ${year}`;
     });
-    populateMultiSelect('channelFilter', channels, true, (c) => channelNames[c] || c);
-    populateMultiSelect('concessionaryFilter', concessionari, true);
-    populateMultiSelect('proprietaFilter', proprieta, true);
-    populateMultiSelect('ragioneSocialeFilter', ragioneSociali, true);
+    populateMultiSelectImproved('channelFilter', channels, true, (c) => channelNames[c] || c);
+    populateMultiSelectImproved('concessionaryFilter', concessionari, true);
+    populateMultiSelectImproved('proprietaFilter', proprieta, true);
+    populateMultiSelectImproved('ragioneSocialeFilter', ragioneSociali, true);
+    populateMultiSelectImproved('compartoFilter', comparti, true);
     
     // 🆕 Mostra filtro tipo gioco solo se ci sono dati ippici
     const tipoGiocoFilterDiv = document.getElementById('tipoGiocoFilterDiv');
     if (tipiGiocoIppico.length > 0) {
         if (tipoGiocoFilterDiv) {
             tipoGiocoFilterDiv.style.display = 'block';
-            populateMultiSelect('tipoGiocoFilter', tipiGiocoIppico, true);
+            populateMultiSelectImproved('tipoGiocoFilter', tipiGiocoIppico, true);
         }
     } else if (tipoGiocoFilterDiv) {
         tipoGiocoFilterDiv.style.display = 'none';
@@ -929,7 +1172,8 @@ function populateFilters() {
     updateFilterCounts();
 }
 
-function populateMultiSelect(selectId, options, selectAll = false, displayFormatter = null) {
+// 🆕 Versione migliorata dei filtri con layout su più righe
+function populateMultiSelectImproved(selectId, options, selectAll = false, displayFormatter = null) {
     const container = document.getElementById(selectId);
     if (!container) return;
     
@@ -939,10 +1183,10 @@ function populateMultiSelect(selectId, options, selectAll = false, displayFormat
     
     // Aggiungi opzione "Seleziona tutto"
     const selectAllOption = document.createElement('div');
-    selectAllOption.className = 'multi-select-option';
+    selectAllOption.className = 'multi-select-option select-all-option';
     selectAllOption.innerHTML = `
         <input type="checkbox" class="multi-select-checkbox select-all" ${selectAll ? 'checked' : ''}>
-        <span><strong>Seleziona tutto</strong></span>
+        <span><strong>Seleziona tutto (${options.length})</strong></span>
     `;
     selectAllOption.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -958,20 +1202,21 @@ function populateMultiSelect(selectId, options, selectAll = false, displayFormat
     
     // Separatore
     const separator = document.createElement('div');
-    separator.style.borderTop = '1px solid #e5e7eb';
-    separator.style.margin = '4px 0';
+    separator.className = 'filter-separator';
     optionsContainer.appendChild(separator);
     
-    // Opzioni individuali
+    // Opzioni individuali organizzate in colonne
+    const grid = document.createElement('div');
+    grid.className = 'filter-options-grid';
+    
     options.forEach(option => {
         const displayText = displayFormatter ? displayFormatter(option) : option;
-        const shortText = displayText.length > 35 ? displayText.substring(0, 35) + '...' : displayText;
         
         const optionElement = document.createElement('div');
-        optionElement.className = 'multi-select-option';
+        optionElement.className = 'multi-select-option grid-option';
         optionElement.innerHTML = `
             <input type="checkbox" class="multi-select-checkbox" value="${option}" ${selectAll ? 'checked' : ''}>
-            <span title="${displayText}">${shortText}</span>
+            <span class="option-text" title="${displayText}">${displayText}</span>
         `;
         
         optionElement.addEventListener('click', function(e) {
@@ -990,9 +1235,10 @@ function populateMultiSelect(selectId, options, selectAll = false, displayFormat
             updateMultiSelectText(selectId);
         });
         
-        optionsContainer.appendChild(optionElement);
+        grid.appendChild(optionElement);
     });
     
+    optionsContainer.appendChild(grid);
     updateMultiSelectText(selectId);
 }
 
@@ -1045,6 +1291,7 @@ function updateFilterCounts() {
     const proprietaCountEl = document.getElementById('proprietaCount');
     const ragioneSocialeCountEl = document.getElementById('ragioneSocialeCount');
     const tipoGiocoCountEl = document.getElementById('tipoGiocoCount');
+    const compartoCountEl = document.getElementById('compartoCount');
 
     if (gameCountEl) gameCountEl.textContent = `(${[...new Set(allData.map(item => item.gameNameComplete || item.gameName))].length})`;
     if (yearCountEl) yearCountEl.textContent = `(${[...new Set(allData.map(item => item.year))].length})`;
@@ -1054,6 +1301,7 @@ function updateFilterCounts() {
     if (concessionaryCountEl) concessionaryCountEl.textContent = `(${[...new Set(allData.map(item => item.concessionarioNome))].length})`;
     if (proprietaCountEl) proprietaCountEl.textContent = `(${[...new Set(allData.map(item => item.concessionarioProprietà))].length})`;
     if (ragioneSocialeCountEl) ragioneSocialeCountEl.textContent = `(${[...new Set(allData.map(item => item.ragioneSociale))].length})`;
+    if (compartoCountEl) compartoCountEl.textContent = `(${[...new Set(allData.map(item => item.comparto))].length})`;
 
     // 🆕 Aggiunto conteggio per tipi di gioco ippico
     const tipiGiocoIppico = [...new Set(allData
@@ -1127,7 +1375,8 @@ function applyFilters() {
     const concessionaryFilter = getSelectedValues('concessionaryFilter');
     const proprietaFilter = getSelectedValues('proprietaFilter');
     const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
-    const tipoGiocoFilter = getSelectedValues('tipoGiocoFilter'); // 🆕
+    const tipoGiocoFilter = getSelectedValues('tipoGiocoFilter');
+    const compartoFilter = getSelectedValues('compartoFilter'); // 🆕
 
     filteredData = allData.filter(item => {
         const gameToCheck = item.gameNameComplete || item.gameName;
@@ -1143,7 +1392,8 @@ function applyFilters() {
                concessionaryFilter.includes(item.concessionarioNome) &&
                proprietaFilter.includes(item.concessionarioProprietà) &&
                ragioneSocialeFilter.includes(item.ragioneSociale) &&
-               tipoGiocoMatch; // 🆕
+               compartoFilter.includes(item.comparto) && // 🆕
+               tipoGiocoMatch;
     });
 
     updateDisplays();
@@ -1168,6 +1418,7 @@ function updateActiveFiltersDisplay() {
     const proprietaFilter = getSelectedValues('proprietaFilter');
     const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
     const tipoGiocoFilter = getSelectedValues('tipoGiocoFilter');
+    const compartoFilter = getSelectedValues('compartoFilter');
     
     const totalGames = [...new Set(allData.map(item => item.gameNameComplete || item.gameName))].length;
     const totalYears = [...new Set(allData.map(item => item.year))].length;
@@ -1178,6 +1429,7 @@ function updateActiveFiltersDisplay() {
     const totalProprieta = [...new Set(allData.map(item => item.concessionarioProprietà))].length;
     const totalRagioneSociali = [...new Set(allData.map(item => item.ragioneSociale))].length;
     const totalTipiGioco = [...new Set(allData.filter(item => item.fileFormat === 'hippoFormat').map(item => item.tipoGiocoName))].length;
+    const totalComparti = [...new Set(allData.map(item => item.comparto))].length;
     
     const filtersActive = 
         gameFilter.length < totalGames ||
@@ -1188,19 +1440,22 @@ function updateActiveFiltersDisplay() {
         concessionaryFilter.length < totalConcessionari ||
         proprietaFilter.length < totalProprieta ||
         ragioneSocialeFilter.length < totalRagioneSociali ||
+        compartoFilter.length < totalComparti ||
         (totalTipiGioco > 0 && tipoGiocoFilter.length < totalTipiGioco);
     
     if (filtersActive) {
         activeFiltersDiv.style.display = 'block';
         const tipoGiocoSummary = totalTipiGioco > 0 ? `<div>🎯 Tipi Gioco: ${tipoGiocoFilter.length}/${totalTipiGioco}</div>` : '';
+        const compartoSummary = totalComparti > 1 ? `<div>🏢 Comparti: ${compartoFilter.length}/${totalComparti}</div>` : '';
         summaryDiv.innerHTML = `
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2 text-xs">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-2 text-xs">
                 <div>🎮 Giochi: ${gameFilter.length}/${totalGames}</div>
                 <div>📅 Anni: ${yearFilter.length}/${totalYears}</div>
                 <div>📊 Trimestri: ${quarterFilter.length}/${totalQuarters}</div>
                 <div>🗓️ Mesi: ${monthFilter.length}/${totalMonths}</div>
                 <div>🌐 Canali: ${channelFilter.length}/${totalChannels}</div>
                 ${tipoGiocoSummary}
+                ${compartoSummary}
                 <div>🏢 Concessionari: ${concessionaryFilter.length}/${totalConcessionari}</div>
                 <div>🔑 Proprietà: ${proprietaFilter.length}/${totalProprieta}</div>
                 <div>📄 Rag.Sociali: ${ragioneSocialeFilter.length}/${totalRagioneSociali}</div>
@@ -1316,8 +1571,9 @@ function getGroupByTitle(groupBy) {
         'quarterYear': 'Trimestre',
         'monthYear': 'Mese',
         'concessionarioProprietà': 'Proprietà',
-        'gameNameComplete': 'Gioco', // 🆕
-        'tipoGiocoName': 'Tipo Gioco Ippico' // 🆕
+        'gameNameComplete': 'Gioco',
+        'tipoGiocoName': 'Tipo Gioco Ippico',
+        'comparto': 'Comparto' // 🆕
     };
     return titles[groupBy] || groupBy;
 }
@@ -1358,8 +1614,8 @@ function updateTable() {
     const tableHead = document.getElementById('tableHead');
     const tableBody = document.getElementById('tableBody');
     
-    // 🆕 Headers aggiornati per includere tipo gioco
-    const headers = ['Gioco', 'Tipo', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    // 🆕 Headers aggiornati per includere comparto
+    const headers = ['Gioco', 'Tipo', 'Comparto', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     tableHead.innerHTML = `
         <tr>
             ${headers.map((header, index) => `
@@ -1384,6 +1640,9 @@ function updateTable() {
         <tr class="hover:bg-gray-50 ${rowClass}">
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${(row.gameNameComplete || row.gameName).length > 15 ? (row.gameNameComplete || row.gameName).substring(0, 15) + '...' : (row.gameNameComplete || row.gameName)}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${tipoGiocoDisplay}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                <span class="comparto-badge">${row.comparto}</span>
+            </td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.year}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.quarter}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.monthName}</td>
@@ -1404,7 +1663,7 @@ function updateTable() {
 }
 
 function sortTable(columnIndex) {
-    const columns = ['gameNameComplete', 'tipoGiocoName', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'concessionarioNome', 'ragioneSociale', 'concessionarioProprietà', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
+    const columns = ['gameNameComplete', 'tipoGiocoName', 'comparto', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'concessionarioNome', 'ragioneSociale', 'concessionarioProprietà', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
     const column = columns[columnIndex];
     
     if (sortColumn === column) {
@@ -1481,6 +1740,15 @@ function updateSummaryStats() {
         </div>
     `).join('');
     
+    // 🆕 Statistiche per comparti
+    const compartoStats = stats.byComparto.map(comp => `
+        <div class="bg-orange-500 bg-opacity-20 rounded-lg p-4">
+            <h4 class="text-sm font-medium text-orange-200">${comp.name}</h4>
+            <p class="text-lg font-bold text-white">${comp.records} record</p>
+            <p class="text-xs text-orange-100">Spesa: ${comp.spesa}</p>
+        </div>
+    `).join('');
+    
     summaryDiv.innerHTML = `
         <div class="bg-blue-500 bg-opacity-20 rounded-lg p-4">
             <h4 class="text-sm font-medium text-blue-200">Totale Record</h4>
@@ -1500,6 +1768,7 @@ function updateSummaryStats() {
         </div>
         ${channelStats}
         ${tipoGiocoStats}
+        ${compartoStats}
     `;
     
     updateNegativeValuesAlert(stats.negativeValues);
@@ -1550,6 +1819,20 @@ function calculateStats() {
         };
     }) : [];
     
+    // 🆕 Statistiche per comparti
+    const byComparto = Object.entries(_.groupBy(filteredData, 'comparto')).map(([comparto, records]) => {
+        const spesaSum = records.reduce((sum, item) => {
+            const value = parseItalianNumber(item.importoSpesa);
+            return sum + value;
+        }, 0);
+        
+        return {
+            name: comparto,
+            records: records.length,
+            spesa: spesaSum.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+        };
+    });
+    
     return {
         totalRecords,
         uniqueConcessionari,
@@ -1558,7 +1841,8 @@ function calculateStats() {
         hasNegativeValues: negativeValues.length > 0,
         negativeValues,
         byChannel,
-        byTipoGioco // 🆕
+        byTipoGioco,
+        byComparto // 🆕
     };
 }
 
@@ -1596,12 +1880,13 @@ function downloadTable(format) {
 }
 
 function downloadCSV() {
-    const headers = ['Gioco', 'Tipo Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    const headers = ['Gioco', 'Tipo Gioco', 'Comparto', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     const csvContent = [
         headers.join(','),
         ...filteredData.map(row => [
             `"${row.gameNameComplete || row.gameName}"`,
-            `"${row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : ''}"`, // 🆕
+            `"${row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : ''}"`,
+            `"${row.comparto}"`, // 🆕
             `"${row.year}"`,
             `"${row.quarter}"`,
             `"${row.monthName}"`,
@@ -1623,7 +1908,8 @@ function downloadCSV() {
 function downloadExcel() {
     const worksheet = XLSX.utils.json_to_sheet(filteredData.map(row => ({
         'Gioco': row.gameNameComplete || row.gameName,
-        'Tipo Gioco': row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : '', // 🆕
+        'Tipo Gioco': row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : '',
+        'Comparto': row.comparto, // 🆕
         'Anno': row.year,
         'Trimestre': row.quarter,
         'Mese': row.monthName,
@@ -1667,5 +1953,19 @@ function toggleAnagraficaSection() {
     } else {
         section.style.display = 'none';
         button.textContent = '📖 Gestisci Anagrafica';
+    }
+}
+
+// 🆕 Funzioni per gestione sezioni mappature
+function toggleMappingsSection() {
+    const section = document.getElementById('mappingsSection');
+    const button = document.querySelector('[onclick="toggleMappingsSection()"]');
+    
+    if (section.style.display === 'none' || section.style.display === '') {
+        section.style.display = 'block';
+        button.textContent = '🎯 Nascondi Mappature';
+    } else {
+        section.style.display = 'none';
+        button.textContent = '🎯 Gestisci Mappature';
     }
 }
