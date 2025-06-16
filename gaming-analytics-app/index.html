@@ -171,6 +171,62 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             margin-top: 20px;
         }
+
+        /* 🆕 Stili per i badge dei tipi di gioco ippico */
+        .tipo-gioco-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            min-width: 50px;
+        }
+
+        .tipo-qf {
+            background: #e0f2fe;
+            color: #0277bd;
+            border: 1px solid #b3e5fc;
+        }
+
+        .tipo-totalizzatore {
+            background: #f3e5f5;
+            color: #7b1fa2;
+            border: 1px solid #e1bee7;
+        }
+
+        .tipo-multipla {
+            background: #fff3e0;
+            color: #ef6c00;
+            border: 1px solid #ffcc02;
+        }
+
+        /* Aggiornamento alla griglia dei filtri per gestire il nuovo filtro */
+        .filter-container .grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        /* Responsive per il nuovo filtro */
+        @media (min-width: 1280px) {
+            .filter-container .grid {
+                grid-template-columns: repeat(9, 1fr); /* 9 colonne invece di 8 */
+            }
+        }
+
+        /* Stile per evidenziare i dati ippici */
+        .hippo-row {
+            background-color: #fafafa;
+            border-left: 3px solid #9c27b0;
+        }
+
+        .hippo-indicator {
+            background: linear-gradient(45deg, #9c27b0, #673ab7);
+            color: white;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
@@ -183,7 +239,7 @@
         <!-- Header -->
         <div class="glass-effect rounded-lg p-6 mb-6">
             <h1 class="text-3xl font-bold text-white mb-2">Gaming Analytics Dashboard</h1>
-            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi con Anagrafica Concessioni</p>
+            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi con Anagrafica Concessioni e supporto formato Ippico</p>
             <div id="dataStatus" class="mt-2 text-sm text-blue-200"></div>
         </div>
 
@@ -212,8 +268,11 @@
                 </button>
             </div>
             <div class="text-xs text-gray-400 mb-2">
-                💡 Il canale viene ora assegnato automaticamente tramite l'anagrafica concessioni. 
-                Carica prima l'anagrafica per avere l'attribuzione corretta dei canali.
+                💡 Supporta 3 formati Excel: <br>
+                • <strong>Formato Standard</strong>: Statistiche GAD normali<br>
+                • <strong>Formato Nuovo</strong>: Con "Periodo da..." nella riga 2<br>
+                • <strong>🆕 Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA<br>
+                Il canale viene assegnato automaticamente tramite l'anagrafica concessioni.
             </div>
             <div id="uploadStatus" class="mt-4 text-sm text-gray-300"></div>
         </div>
@@ -282,7 +341,7 @@
         <!-- Filters Section con design migliorato -->
         <div class="filter-container mb-6" id="filtersSection" style="display: none;">
             <h2 class="text-xl font-semibold text-gray-800 mb-6">Filtri Avanzati</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9 gap-4">
                 <!-- Filtro Giochi -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -360,6 +419,23 @@
                     <div class="multi-select" id="channelFilter">
                         <button type="button" class="multi-select-button" onclick="toggleDropdown('channelFilter')">
                             <span class="selected-text">Seleziona canali...</span>
+                            <span class="float-right">▼</span>
+                        </button>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-options"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🆕 Filtro Tipo Gioco Ippico -->
+                <div id="tipoGiocoFilterDiv" style="display: none;">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        🎯 Tipo Gioco
+                        <span id="tipoGiocoCount" class="text-purple-600"></span>
+                    </label>
+                    <div class="multi-select" id="tipoGiocoFilter">
+                        <button type="button" class="multi-select-button" onclick="toggleDropdown('tipoGiocoFilter')">
+                            <span class="selected-text">Seleziona tipi...</span>
                             <span class="float-right">▼</span>
                         </button>
                         <div class="multi-select-dropdown">
@@ -490,6 +566,8 @@
                         <option value="concessionarioNome">Raggruppa per Concessionario</option>
                         <option value="ragioneSociale">Raggruppa per Ragione Sociale</option>
                         <option value="concessionarioProprietà">Raggruppa per Proprietà</option>
+                        <option value="gameNameComplete">Raggruppa per Gioco</option>
+                        <option value="tipoGiocoName">🆕 Raggruppa per Tipo Gioco Ippico</option>
                         <option value="canale">Raggruppa per Canale</option>
                         <option value="quarterYear">Raggruppa per Trimestre</option>
                         <option value="monthYear">Raggruppa per Mese</option>
