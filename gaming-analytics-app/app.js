@@ -4,10 +4,13 @@ let filteredData = [];
 let currentChart = null;
 let sortColumn = null;
 let sortDirection = 'asc';
+let anagraficaConcessioni = {}; // Mappa per anagrafica concessioni
+let anagraficaData = []; // Array per gestione anagrafica
 
 // Costanti per localStorage
 const STORAGE_KEY = 'gaming_analytics_data';
-const STORAGE_VERSION = '1.1'; // Aggiornata per i nuovi campi
+const ANAGRAFICA_STORAGE_KEY = 'gaming_analytics_anagrafica';
+const STORAGE_VERSION = '2.0'; // Aggiornata per anagrafica
 
 // Mappa per conversione mesi
 const monthNames = {
@@ -27,12 +30,15 @@ const quarterNames = {
 // Mappa per canali
 const channelNames = {
     'fisico': '📍 Fisico',
-    'online': '💻 Online'
+    'online': '💻 Online',
+    'FISICO': '📍 Fisico',
+    'ONLINE': '💻 Online'
 };
 
 // Inizializzazione - carica dati salvati
 document.addEventListener('DOMContentLoaded', function() {
     loadStoredData();
+    loadStoredAnagrafica();
     setupEventListeners();
 });
 
@@ -50,6 +56,253 @@ function setupEventListeners() {
             });
         }
     });
+}
+
+// ===== GESTIONE ANAGRAFICA CONCESSIONI =====
+
+function loadStoredAnagrafica() {
+    try {
+        const storedAnagrafica = localStorage.getItem(ANAGRAFICA_STORAGE_KEY);
+        if (storedAnagrafica) {
+            const parsed = JSON.parse(storedAnagrafica);
+            anagraficaData = parsed.data || [];
+            buildAnagraficaMap();
+            updateAnagraficaTable();
+            showStatus(`Caricata anagrafica con ${anagraficaData.length} concessioni`, 'success');
+        }
+    } catch (error) {
+        console.error('Errore nel caricamento anagrafica:', error);
+    }
+}
+
+function saveAnagraficaToStorage() {
+    try {
+        const dataToSave = {
+            version: STORAGE_VERSION,
+            timestamp: new Date().toISOString(),
+            data: anagraficaData
+        };
+        localStorage.setItem(ANAGRAFICA_STORAGE_KEY, JSON.stringify(dataToSave));
+        buildAnagraficaMap();
+        showStatus('Anagrafica salvata', 'success');
+    } catch (error) {
+        console.error('Errore nel salvataggio anagrafica:', error);
+        showStatus('Errore nel salvataggio anagrafica', 'error');
+    }
+}
+
+function buildAnagraficaMap() {
+    anagraficaConcessioni = {};
+    anagraficaData.forEach(item => {
+        const codiceConcessione = item.codiceConcessione?.toString().trim();
+        if (codiceConcessione) {
+            anagraficaConcessioni[codiceConcessione] = item;
+        }
+    });
+}
+
+async function loadAnagraficaFromExcel() {
+    const fileInput = document.getElementById('anagraficaFileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showStatus('Seleziona un file Excel per caricare l\'anagrafica', 'error');
+        return;
+    }
+    
+    try {
+        showStatus('Caricamento anagrafica in corso...', 'info');
+        const anagraficaFromExcel = await readAnagraficaFromExcel(file);
+        
+        anagraficaData = anagraficaFromExcel;
+        saveAnagraficaToStorage();
+        updateAnagraficaTable();
+        
+        // Aggiorna i filtri se ci sono dati caricati
+        if (allData.length > 0) {
+            // Ricalcola i dati esistenti con la nuova anagrafica
+            allData = allData.map(item => enrichDataWithAnagrafica(item));
+            saveDataToStorage();
+            populateFilters();
+            applyFilters();
+        }
+        
+        showStatus(`Caricata anagrafica con ${anagraficaData.length} concessioni dal file Excel`, 'success');
+    } catch (error) {
+        showStatus(`Errore nel caricamento anagrafica: ${error.message}`, 'error');
+    }
+}
+
+function readAnagraficaFromExcel(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                
+                // Cerca il foglio ANAGRAFICA CONCESSIONI
+                let anagraficaSheet = null;
+                if (workbook.Sheets['ANAGRAFICA CONCESSIONI']) {
+                    anagraficaSheet = workbook.Sheets['ANAGRAFICA CONCESSIONI'];
+                } else {
+                    // Se non trova il foglio specifico, usa il primo foglio
+                    const firstSheetName = workbook.SheetNames[0];
+                    anagraficaSheet = workbook.Sheets[firstSheetName];
+                }
+                
+                const jsonData = XLSX.utils.sheet_to_json(anagraficaSheet, { header: 1 });
+                const parsedAnagrafica = parseAnagraficaData(jsonData);
+                resolve(parsedAnagrafica);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        
+        reader.onerror = function() {
+            reject(new Error(`Errore nella lettura del file ${file.name}`));
+        };
+        
+        reader.readAsBinaryString(file);
+    });
+}
+
+function parseAnagraficaData(jsonData) {
+    if (jsonData.length < 2) {
+        throw new Error('File anagrafica: formato non valido');
+    }
+    
+    // Trova la riga degli headers
+    let headerRowIndex = -1;
+    for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        if (row && row[0] && row[0].toString().includes('CONC')) {
+            headerRowIndex = i;
+            break;
+        }
+    }
+    
+    if (headerRowIndex === -1) {
+        throw new Error('Headers non trovati nel file anagrafica');
+    }
+    
+    const dataRows = jsonData.slice(headerRowIndex + 1).filter(row => row && row[0]);
+    
+    return dataRows.map(row => ({
+        codiceConcessione: row[0]?.toString().trim() || '',
+        concessionario: row[1]?.toString().trim() || '',
+        ragioneSociale: row[2]?.toString().trim() || '',
+        canale: row[3]?.toString().trim().toLowerCase() || 'fisico',
+        proprieta: row[4]?.toString().trim() || ''
+    }));
+}
+
+function enrichDataWithAnagrafica(dataItem) {
+    const anagrafica = anagraficaConcessioni[dataItem.codiceConcessione];
+    if (anagrafica) {
+        return {
+            ...dataItem,
+            canale: anagrafica.canale,
+            channelName: channelNames[anagrafica.canale] || anagrafica.canale,
+            concessionarioNome: anagrafica.concessionario,
+            concessionarioProprietà: anagrafica.proprieta
+        };
+    }
+    return {
+        ...dataItem,
+        concessionarioNome: dataItem.ragioneSociale,
+        concessionarioProprietà: 'Non specificato'
+    };
+}
+
+function updateAnagraficaTable() {
+    const tableBody = document.getElementById('anagraficaTableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = anagraficaData.map((item, index) => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2 text-sm text-gray-900">${item.codiceConcessione}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <input type="text" value="${item.concessionario}" 
+                       onchange="updateAnagraficaItem(${index}, 'concessionario', this.value)"
+                       class="w-full p-1 border rounded">
+            </td>
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <input type="text" value="${item.ragioneSociale}" 
+                       onchange="updateAnagraficaItem(${index}, 'ragioneSociale', this.value)"
+                       class="w-full p-1 border rounded">
+            </td>
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <select onchange="updateAnagraficaItem(${index}, 'canale', this.value)"
+                        class="w-full p-1 border rounded">
+                    <option value="fisico" ${item.canale === 'fisico' ? 'selected' : ''}>Fisico</option>
+                    <option value="online" ${item.canale === 'online' ? 'selected' : ''}>Online</option>
+                </select>
+            </td>
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <input type="text" value="${item.proprieta}" 
+                       onchange="updateAnagraficaItem(${index}, 'proprieta', this.value)"
+                       class="w-full p-1 border rounded">
+            </td>
+            <td class="px-4 py-2 text-sm">
+                <button onclick="deleteAnagraficaItem(${index})" 
+                        class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">
+                    Elimina
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('anagraficaCount').textContent = anagraficaData.length;
+}
+
+function updateAnagraficaItem(index, field, value) {
+    if (anagraficaData[index]) {
+        anagraficaData[index][field] = value;
+        saveAnagraficaToStorage();
+        
+        // Se ci sono dati caricati, aggiorna anche quelli
+        if (allData.length > 0) {
+            allData = allData.map(item => enrichDataWithAnagrafica(item));
+            saveDataToStorage();
+            populateFilters();
+            applyFilters();
+        }
+    }
+}
+
+function deleteAnagraficaItem(index) {
+    if (confirm('Sei sicuro di voler eliminare questa concessione?')) {
+        anagraficaData.splice(index, 1);
+        saveAnagraficaToStorage();
+        updateAnagraficaTable();
+    }
+}
+
+function addNewAnagraficaItem() {
+    const newItem = {
+        codiceConcessione: '',
+        concessionario: '',
+        ragioneSociale: '',
+        canale: 'fisico',
+        proprieta: ''
+    };
+    anagraficaData.push(newItem);
+    updateAnagraficaTable();
+}
+
+function exportAnagrafica() {
+    const worksheet = XLSX.utils.json_to_sheet(anagraficaData.map(item => ({
+        'N. CONC.': item.codiceConcessione,
+        'CONCESSIONARIO': item.concessionario,
+        'RAGIONE SOCIALE': item.ragioneSociale,
+        'CANALE': item.canale.toUpperCase(),
+        'PROPRIETA': item.proprieta
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'ANAGRAFICA CONCESSIONI');
+    XLSX.writeFile(workbook, `anagrafica-concessioni-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 // ===== GESTIONE PERSISTENZA DATI =====
@@ -76,11 +329,12 @@ function loadStoredData() {
         if (storedData) {
             const parsed = JSON.parse(storedData);
             if (parsed.data) {
-                // Migra dati vecchi se necessario
                 allData = parsed.data.map(item => ({
                     ...item,
-                    canale: item.canale || 'fisico', // Default fisico per dati esistenti
-                    quarterYear: item.quarterYear || `${item.quarter}/${item.year}`
+                    canale: item.canale || 'fisico',
+                    quarterYear: item.quarterYear || `${item.quarter}/${item.year}`,
+                    concessionarioNome: item.concessionarioNome || item.ragioneSociale,
+                    concessionarioProprietà: item.concessionarioProprietà || 'Non specificato'
                 }));
                 
                 if (allData.length > 0) {
@@ -91,7 +345,6 @@ function loadStoredData() {
                 }
                 updateDataStatus();
                 
-                // Salva la migrazione
                 if (parsed.version !== STORAGE_VERSION) {
                     saveDataToStorage();
                 }
@@ -111,7 +364,6 @@ function clearStoredData() {
         allData = [];
         filteredData = [];
         
-        // Reset interfaccia
         document.getElementById('filtersSection').style.display = 'none';
         document.getElementById('analyticsSection').style.display = 'none';
         document.getElementById('tableSection').style.display = 'none';
@@ -164,36 +416,37 @@ function getDateRange() {
 
 async function processFiles() {
     const fileInput = document.getElementById('fileInput');
-    const channelSelector = document.getElementById('channelSelector');
     const files = fileInput.files;
-    const selectedChannel = channelSelector.value;
     
     if (files.length === 0) {
         showStatus('Seleziona almeno un file Excel', 'error');
         return;
     }
 
-    showStatus(`Elaborazione file in corso per canale ${channelNames[selectedChannel]}...`, 'info');
+    showStatus('Elaborazione file in corso...', 'info');
     
     try {
         const newData = [];
         for (let file of files) {
-            const data = await readExcelFile(file, selectedChannel);
+            const data = await readExcelFile(file);
             newData.push(...data);
         }
         
         if (newData.length > 0) {
+            // Arricchisci i dati con l'anagrafica
+            const enrichedData = newData.map(item => enrichDataWithAnagrafica(item));
+            
             // Aggiungi ai dati esistenti evitando duplicati
-            const existingKeys = new Set(allData.map(item => `${item.fileName}-${item.codiceConcessione}-${item.monthYear}-${item.canale}`));
-            const uniqueNewData = newData.filter(item => 
-                !existingKeys.has(`${item.fileName}-${item.codiceConcessione}-${item.monthYear}-${item.canale}`)
+            const existingKeys = new Set(allData.map(item => `${item.fileName}-${item.codiceConcessione}-${item.monthYear}`));
+            const uniqueNewData = enrichedData.filter(item => 
+                !existingKeys.has(`${item.fileName}-${item.codiceConcessione}-${item.monthYear}`)
             );
             
             allData.push(...uniqueNewData);
             saveDataToStorage();
             
             populateFilters();
-            showStatus(`Elaborati ${uniqueNewData.length} nuovi record ${channelNames[selectedChannel]} da ${files.length} file (${newData.length - uniqueNewData.length} duplicati ignorati)`, 'success');
+            showStatus(`Elaborati ${uniqueNewData.length} nuovi record da ${files.length} file (${newData.length - uniqueNewData.length} duplicati ignorati)`, 'success');
             document.getElementById('filtersSection').style.display = 'block';
             applyFilters();
         } else {
@@ -204,7 +457,7 @@ async function processFiles() {
     }
 }
 
-function readExcelFile(file, channel = 'fisico') {
+function readExcelFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         
@@ -215,7 +468,7 @@ function readExcelFile(file, channel = 'fisico') {
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
-                const parsedData = parseExcelData(jsonData, file.name, channel);
+                const parsedData = parseExcelData(jsonData, file.name);
                 resolve(parsedData);
             } catch (error) {
                 reject(error);
@@ -230,7 +483,7 @@ function readExcelFile(file, channel = 'fisico') {
     });
 }
 
-function parseExcelData(jsonData, fileName, channel = 'fisico') {
+function parseExcelData(jsonData, fileName) {
     if (jsonData.length < 6) {
         throw new Error(`File ${fileName}: formato non valido`);
     }
@@ -268,7 +521,6 @@ function parseExcelData(jsonData, fileName, channel = 'fisico') {
         monthYear: `${month}/${year}`,
         quarter: quarter,
         quarterYear: quarterYear,
-        canale: channel,
         codiceConcessione: row[0]?.toString().trim() || '',
         ragioneSociale: row[1]?.toString().trim() || '',
         importoRaccolta: convertToItalianNumber(row[2]),
@@ -277,7 +529,6 @@ function parseExcelData(jsonData, fileName, channel = 'fisico') {
         percentualeSpesa: row[5]?.toString() || '',
         monthName: monthNames[month] || month,
         quarterName: quarterNames[quarter] || quarter,
-        channelName: channelNames[channel] || channel,
         isNegativeSpesa: parseFloat(row[4]?.toString().replace(',', '.') || 0) < 0
     }));
 }
@@ -304,7 +555,7 @@ function getQuarter(month) {
 
 function getCurrentQuarter() {
     const now = new Date();
-    const month = now.getMonth() + 1; // getMonth() returns 0-11
+    const month = now.getMonth() + 1;
     const year = now.getFullYear();
     const quarter = getQuarter(month.toString().padStart(2, '0'));
     return `${quarter}/${year}`;
@@ -318,7 +569,9 @@ function populateFilters() {
     const quarters = [...new Set(allData.map(item => item.quarterYear))].sort();
     const months = [...new Set(allData.map(item => item.monthYear))].sort();
     const channels = [...new Set(allData.map(item => item.canale))].sort();
-    const concessionari = [...new Set(allData.map(item => item.ragioneSociale))].sort();
+    const concessionari = [...new Set(allData.map(item => item.concessionarioNome))].sort();
+    const proprieta = [...new Set(allData.map(item => item.concessionarioProprietà))].sort();
+    const ragioneSociali = [...new Set(allData.map(item => item.ragioneSociale))].sort();
 
     populateMultiSelect('gameFilter', games, true);
     populateMultiSelect('yearFilter', years, true);
@@ -332,12 +585,16 @@ function populateFilters() {
     });
     populateMultiSelect('channelFilter', channels, true, (c) => channelNames[c] || c);
     populateMultiSelect('concessionaryFilter', concessionari, true);
+    populateMultiSelect('proprietaFilter', proprieta, true);
+    populateMultiSelect('ragioneSocialeFilter', ragioneSociali, true);
     
     updateFilterCounts();
 }
 
 function populateMultiSelect(selectId, options, selectAll = false, displayFormatter = null) {
     const container = document.getElementById(selectId);
+    if (!container) return;
+    
     const optionsContainer = container.querySelector('.multi-select-options');
     
     optionsContainer.innerHTML = '';
@@ -415,6 +672,8 @@ function toggleDropdown(selectId) {
 
 function updateMultiSelectText(selectId) {
     const container = document.getElementById(selectId);
+    if (!container) return;
+    
     const selectedText = container.querySelector('.selected-text');
     const checkboxes = container.querySelectorAll('.multi-select-checkbox:not(.select-all):checked');
     
@@ -422,7 +681,6 @@ function updateMultiSelectText(selectId) {
         selectedText.textContent = 'Nessuna selezione';
     } else if (checkboxes.length === 1) {
         const value = checkboxes[0].value;
-        // Format display text based on filter type
         let displayValue = value;
         if (selectId === 'quarterFilter') {
             const [quarter, year] = value.split('/');
@@ -445,11 +703,19 @@ function updateFilterCounts() {
     document.getElementById('quarterCount').textContent = `(${[...new Set(allData.map(item => item.quarterYear))].length})`;
     document.getElementById('monthCount').textContent = `(${[...new Set(allData.map(item => item.monthYear))].length})`;
     document.getElementById('channelCount').textContent = `(${[...new Set(allData.map(item => item.canale))].length})`;
-    document.getElementById('concessionaryCount').textContent = `(${[...new Set(allData.map(item => item.ragioneSociale))].length})`;
+    document.getElementById('concessionaryCount').textContent = `(${[...new Set(allData.map(item => item.concessionarioNome))].length})`;
+    if (document.getElementById('proprietaCount')) {
+        document.getElementById('proprietaCount').textContent = `(${[...new Set(allData.map(item => item.concessionarioProprietà))].length})`;
+    }
+    if (document.getElementById('ragioneSocialeCount')) {
+        document.getElementById('ragioneSocialeCount').textContent = `(${[...new Set(allData.map(item => item.ragioneSociale))].length})`;
+    }
 }
 
 function getSelectedValues(selectId) {
     const container = document.getElementById(selectId);
+    if (!container) return [];
+    
     const checkboxes = container.querySelectorAll('.multi-select-checkbox:not(.select-all):checked');
     return Array.from(checkboxes).map(cb => cb.value);
 }
@@ -475,14 +741,13 @@ function resetFilters() {
     applyFilters();
 }
 
-// Funzioni helper per filtri rapidi
 function filterByChannel(channel) {
-    // Deseleziona tutti i canali
     const channelContainer = document.getElementById('channelFilter');
+    if (!channelContainer) return;
+    
     const channelCheckboxes = channelContainer.querySelectorAll('.multi-select-checkbox:not(.select-all)');
     channelCheckboxes.forEach(cb => cb.checked = cb.value === channel);
     
-    // Aggiorna text e applica
     updateMultiSelectText('channelFilter');
     applyFilters();
 }
@@ -490,12 +755,12 @@ function filterByChannel(channel) {
 function filterByCurrentQuarter() {
     const currentQuarter = getCurrentQuarter();
     
-    // Deseleziona tutti i trimestri
     const quarterContainer = document.getElementById('quarterFilter');
+    if (!quarterContainer) return;
+    
     const quarterCheckboxes = quarterContainer.querySelectorAll('.multi-select-checkbox:not(.select-all)');
     quarterCheckboxes.forEach(cb => cb.checked = cb.value === currentQuarter);
     
-    // Aggiorna text e applica
     updateMultiSelectText('quarterFilter');
     applyFilters();
 }
@@ -507,6 +772,8 @@ function applyFilters() {
     const monthFilter = getSelectedValues('monthFilter');
     const channelFilter = getSelectedValues('channelFilter');
     const concessionaryFilter = getSelectedValues('concessionaryFilter');
+    const proprietaFilter = getSelectedValues('proprietaFilter');
+    const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
 
     filteredData = allData.filter(item => {
         return gameFilter.includes(item.gameName) &&
@@ -514,14 +781,15 @@ function applyFilters() {
                quarterFilter.includes(item.quarterYear) &&
                monthFilter.includes(item.monthYear) &&
                channelFilter.includes(item.canale) &&
-               concessionaryFilter.includes(item.ragioneSociale);
+               concessionaryFilter.includes(item.concessionarioNome) &&
+               proprietaFilter.includes(item.concessionarioProprietà) &&
+               ragioneSocialeFilter.includes(item.ragioneSociale);
     });
 
     updateDisplays();
     updateActiveFiltersDisplay();
     showStatus(`Filtrati ${filteredData.length} record di ${allData.length} totali`, 'info');
     
-    // Chiudi dropdown
     document.querySelectorAll('.multi-select-dropdown').forEach(dropdown => {
         dropdown.classList.remove('show');
     });
@@ -537,13 +805,17 @@ function updateActiveFiltersDisplay() {
     const monthFilter = getSelectedValues('monthFilter');
     const channelFilter = getSelectedValues('channelFilter');
     const concessionaryFilter = getSelectedValues('concessionaryFilter');
+    const proprietaFilter = getSelectedValues('proprietaFilter');
+    const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
     
     const totalGames = [...new Set(allData.map(item => item.gameName))].length;
     const totalYears = [...new Set(allData.map(item => item.year))].length;
     const totalQuarters = [...new Set(allData.map(item => item.quarterYear))].length;
     const totalMonths = [...new Set(allData.map(item => item.monthYear))].length;
     const totalChannels = [...new Set(allData.map(item => item.canale))].length;
-    const totalConcessionari = [...new Set(allData.map(item => item.ragioneSociale))].length;
+    const totalConcessionari = [...new Set(allData.map(item => item.concessionarioNome))].length;
+    const totalProprieta = [...new Set(allData.map(item => item.concessionarioProprietà))].length;
+    const totalRagioneSociali = [...new Set(allData.map(item => item.ragioneSociale))].length;
     
     const filtersActive = 
         gameFilter.length < totalGames ||
@@ -551,18 +823,22 @@ function updateActiveFiltersDisplay() {
         quarterFilter.length < totalQuarters ||
         monthFilter.length < totalMonths ||
         channelFilter.length < totalChannels ||
-        concessionaryFilter.length < totalConcessionari;
+        concessionaryFilter.length < totalConcessionari ||
+        proprietaFilter.length < totalProprieta ||
+        ragioneSocialeFilter.length < totalRagioneSociali;
     
     if (filtersActive) {
         activeFiltersDiv.style.display = 'block';
         summaryDiv.innerHTML = `
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-xs">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
                 <div>🎮 Giochi: ${gameFilter.length}/${totalGames}</div>
                 <div>📅 Anni: ${yearFilter.length}/${totalYears}</div>
                 <div>📊 Trimestri: ${quarterFilter.length}/${totalQuarters}</div>
                 <div>🗓️ Mesi: ${monthFilter.length}/${totalMonths}</div>
                 <div>🌐 Canali: ${channelFilter.length}/${totalChannels}</div>
                 <div>🏢 Concessionari: ${concessionaryFilter.length}/${totalConcessionari}</div>
+                <div>🔑 Proprietà: ${proprietaFilter.length}/${totalProprieta}</div>
+                <div>📄 Rag.Sociali: ${ragioneSocialeFilter.length}/${totalRagioneSociali}</div>
             </div>
         `;
     } else {
@@ -624,7 +900,6 @@ function prepareChartData(metric, groupBy) {
     const data = [];
     
     Object.keys(grouped).forEach(groupKey => {
-        // Format label based on group type
         let label = groupKey;
         if (groupBy === 'quarterYear') {
             const [quarter, year] = groupKey.split('/');
@@ -645,7 +920,6 @@ function prepareChartData(metric, groupBy) {
         data.push(sum);
     });
 
-    // Ordina per valore decrescente e prendi top 15
     const combined = labels.map((label, index) => ({ label, value: data[index] }));
     combined.sort((a, b) => b.value - a.value);
     const topItems = combined.slice(0, 15);
@@ -664,10 +938,12 @@ function prepareChartData(metric, groupBy) {
 
 function getGroupByTitle(groupBy) {
     const titles = {
-        'ragioneSociale': 'Concessionario',
+        'concessionarioNome': 'Concessionario',
+        'ragioneSociale': 'Ragione Sociale',
         'canale': 'Canale',
         'quarterYear': 'Trimestre',
-        'monthYear': 'Mese'
+        'monthYear': 'Mese',
+        'concessionarioProprietà': 'Proprietà'
     };
     return titles[groupBy] || groupBy;
 }
@@ -708,11 +984,11 @@ function updateTable() {
     const tableHead = document.getElementById('tableHead');
     const tableBody = document.getElementById('tableBody');
     
-    const headers = ['Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Ragione Sociale', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    const headers = ['Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     tableHead.innerHTML = `
         <tr>
             ${headers.map((header, index) => `
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" 
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable" 
                     onclick="sortTable(${index})">
                     ${header}
                     <span class="sort-arrow" id="arrow-${index}">▲</span>
@@ -724,25 +1000,27 @@ function updateTable() {
     const sortedData = getSortedData();
     tableBody.innerHTML = sortedData.map(row => `
         <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.gameName.length > 20 ? row.gameName.substring(0, 20) + '...' : row.gameName}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.year}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.quarter}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.monthName}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm">
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.gameName.length > 15 ? row.gameName.substring(0, 15) + '...' : row.gameName}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.year}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.quarter}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.monthName}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm">
                 <span class="channel-badge channel-${row.canale}">${row.channelName}</span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.codiceConcessione}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title="${row.ragioneSociale}">${row.ragioneSociale.length > 25 ? row.ragioneSociale.substring(0, 25) + '...' : row.ragioneSociale}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.importoRaccolta}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.percentualeRaccolta}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${row.isNegativeSpesa ? 'negative-value' : ''}">${row.importoSpesa}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.percentualeSpesa}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.codiceConcessione}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium" title="${row.concessionarioNome}">${row.concessionarioNome.length > 15 ? row.concessionarioNome.substring(0, 15) + '...' : row.concessionarioNome}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" title="${row.ragioneSociale}">${row.ragioneSociale.length > 20 ? row.ragioneSociale.substring(0, 20) + '...' : row.ragioneSociale}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900" title="${row.concessionarioProprietà}">${row.concessionarioProprietà.length > 15 ? row.concessionarioProprietà.substring(0, 15) + '...' : row.concessionarioProprietà}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.importoRaccolta}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.percentualeRaccolta}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 ${row.isNegativeSpesa ? 'negative-value' : ''}">${row.importoSpesa}</td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.percentualeSpesa}</td>
         </tr>
     `).join('');
 }
 
 function sortTable(columnIndex) {
-    const columns = ['gameName', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'ragioneSociale', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
+    const columns = ['gameName', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'concessionarioNome', 'ragioneSociale', 'concessionarioProprietà', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
     const column = columns[columnIndex];
     
     if (sortColumn === column) {
@@ -790,7 +1068,6 @@ function updateSummaryStats() {
     const stats = calculateStats();
     const summaryDiv = document.getElementById('summaryStats');
     
-    // Statistiche per canale
     const channelStats = stats.byChannel.map(ch => `
         <div class="bg-indigo-500 bg-opacity-20 rounded-lg p-4">
             <h4 class="text-sm font-medium text-indigo-200">${ch.name}</h4>
@@ -819,13 +1096,12 @@ function updateSummaryStats() {
         ${channelStats}
     `;
     
-    // Mostra alert per valori negativi
     updateNegativeValuesAlert(stats.negativeValues);
 }
 
 function calculateStats() {
     const totalRecords = filteredData.length;
-    const uniqueConcessionari = new Set(filteredData.map(item => item.ragioneSociale)).size;
+    const uniqueConcessionari = new Set(filteredData.map(item => item.concessionarioNome)).size;
     
     const totalRaccolta = filteredData.reduce((sum, item) => {
         const value = parseFloat(item.importoRaccolta.toString().replace(',', '.')) || 0;
@@ -839,7 +1115,6 @@ function calculateStats() {
     
     const negativeValues = filteredData.filter(item => item.isNegativeSpesa);
     
-    // Statistiche per canale
     const byChannel = Object.entries(_.groupBy(filteredData, 'canale')).map(([channel, records]) => {
         const raccoltaSum = records.reduce((sum, item) => {
             const value = parseFloat(item.importoRaccolta.toString().replace(',', '.')) || 0;
@@ -871,7 +1146,7 @@ function updateNegativeValuesAlert(negativeValues) {
     if (negativeValues.length > 0) {
         alertDiv.style.display = 'block';
         listDiv.innerHTML = negativeValues.map(item => 
-            `• ${item.ragioneSociale} (${item.channelName}): ${item.importoSpesa} (${item.monthYear})`
+            `• ${item.concessionarioNome} (${item.channelName}): ${item.importoSpesa} (${item.monthYear})`
         ).join('<br>');
     } else {
         alertDiv.style.display = 'none';
@@ -898,7 +1173,7 @@ function downloadTable(format) {
 }
 
 function downloadCSV() {
-    const headers = ['Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Ragione Sociale', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    const headers = ['Gioco', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     const csvContent = [
         headers.join(','),
         ...filteredData.map(row => [
@@ -908,7 +1183,9 @@ function downloadCSV() {
             `"${row.monthName}"`,
             `"${row.channelName}"`,
             `"${row.codiceConcessione}"`,
+            `"${row.concessionarioNome}"`,
             `"${row.ragioneSociale}"`,
+            `"${row.concessionarioProprietà}"`,
             `"${row.importoRaccolta}"`,
             `"${row.percentualeRaccolta}"`,
             `"${row.importoSpesa}"`,
@@ -927,7 +1204,9 @@ function downloadExcel() {
         'Mese': row.monthName,
         'Canale': row.channelName,
         'Codice': row.codiceConcessione,
+        'Concessionario': row.concessionarioNome,
         'Ragione Sociale': row.ragioneSociale,
+        'Proprietà': row.concessionarioProprietà,
         'Importo Raccolta': row.importoRaccolta,
         'Perc. Raccolta': row.percentualeRaccolta,
         'Importo Spesa': row.importoSpesa,
@@ -951,4 +1230,17 @@ function showStatus(message, type) {
     const statusDiv = document.getElementById('uploadStatus');
     statusDiv.textContent = message;
     statusDiv.className = `mt-4 text-sm ${type === 'error' ? 'text-red-300' : type === 'success' ? 'text-green-300' : type === 'warning' ? 'text-yellow-300' : 'text-blue-300'}`;
+}
+
+function toggleAnagraficaSection() {
+    const section = document.getElementById('anagraficaSection');
+    const button = document.querySelector('[onclick="toggleAnagraficaSection()"]');
+    
+    if (section.style.display === 'none' || section.style.display === '') {
+        section.style.display = 'block';
+        button.textContent = '📖 Nascondi Anagrafica';
+    } else {
+        section.style.display = 'none';
+        button.textContent = '📖 Gestisci Anagrafica';
+    }
 }
