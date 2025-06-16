@@ -10,7 +10,7 @@ let anagraficaData = []; // Array per gestione anagrafica
 // Costanti per localStorage
 const STORAGE_KEY = 'gaming_analytics_data';
 const ANAGRAFICA_STORAGE_KEY = 'gaming_analytics_anagrafica';
-const STORAGE_VERSION = '2.2'; // Aggiornata per fix numeri
+const STORAGE_VERSION = '2.3'; // Aggiornata per fix calcoli numerici
 
 // Mappa per conversione mesi
 const monthNames = {
@@ -550,7 +550,7 @@ function parseExcelData(jsonData, fileName) {
         percentualeSpesa: row[5]?.toString() || '',
         monthName: monthNames[month] || month,
         quarterName: quarterNames[quarter] || quarter,
-        isNegativeSpesa: parseFloat(row[4]?.toString().replace(',', '.') || 0) < 0,
+        isNegativeSpesa: parseItalianNumber(row[4]) < 0, // ✅ CORREZIONE
         fileFormat: 'oldFormat'
     }));
 }
@@ -609,12 +609,12 @@ function parseNewFormatExcelData(jsonData, fileName) {
         percentualeSpesa: row[5]?.toString() || '',
         monthName: monthNames[month] || month,
         quarterName: quarterNames[quarter] || quarter,
-        isNegativeSpesa: parseFloat(row[4]?.toString().replace(',', '.') || 0) < 0,
+        isNegativeSpesa: parseItalianNumber(row[4]) < 0, // ✅ CORREZIONE
         fileFormat: 'newFormat' // Flag per identificare il nuovo formato
     }));
 }
 
-// FUNZIONE CORRETTA PER LA CONVERSIONE DEI NUMERI
+// FUNZIONE CORRETTA PER LA CONVERSIONE DEI NUMERI IN FORMATO ITALIANO (PER DISPLAY)
 function convertToItalianNumber(value) {
     if (value === null || value === undefined || value === '') return '0,00';
     
@@ -713,6 +713,46 @@ function convertToItalianNumber(value) {
         console.error(`Errore nella conversione di: ${numStr}`, error);
         return numStr; // Ritorna il valore originale
     }
+}
+
+// ✅ FUNZIONE HELPER PER CONVERTIRE NUMERI ITALIANI IN NUMERI JAVASCRIPT (PER CALCOLI)
+function parseItalianNumber(value) {
+    if (value === null || value === undefined || value === '') return 0;
+    
+    // Se è già un numero JavaScript
+    if (typeof value === 'number') return value;
+    
+    let numStr = value.toString().trim();
+    
+    // Se è vuoto
+    if (!numStr) return 0;
+    
+    // Rimuovi caratteri non numerici tranne punti, virgole e segni
+    numStr = numStr.replace(/[^\d.,+-]/g, '');
+    
+    if (!numStr) return 0;
+    
+    // Se è in formato italiano (punti per migliaia, virgola per decimali)
+    // Esempi: "54.548.383,95" o "1.234,56" o "123,45"
+    if (numStr.includes(',')) {
+        // Rimuovi tutti i punti (separatori migliaia) e sostituisci virgola con punto
+        const cleaned = numStr.replace(/\./g, '').replace(',', '.');
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    // Se è in formato americano o semplice
+    // Esempi: "54,548,383.95" o "1234.56"
+    if (numStr.includes('.')) {
+        // Se ha anche virgole, rimuovile (sono separatori migliaia in formato americano)
+        const cleaned = numStr.replace(/,/g, '');
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    // Solo cifre, nessun separatore decimale
+    const parsed = parseFloat(numStr);
+    return isNaN(parsed) ? 0 : parsed;
 }
 
 function getQuarter(month) {
@@ -1069,6 +1109,7 @@ function updateChart() {
     currentChart = new Chart(ctx, config);
 }
 
+// ✅ CORREZIONE: Usa parseItalianNumber per i calcoli dei grafici
 function prepareChartData(metric, groupBy) {
     const grouped = _.groupBy(filteredData, groupBy);
     const labels = [];
@@ -1089,7 +1130,7 @@ function prepareChartData(metric, groupBy) {
         labels.push(label.length > 20 ? label.substring(0, 20) + '...' : label);
         
         const sum = grouped[groupKey].reduce((acc, item) => {
-            const value = parseFloat(item[metric].toString().replace(',', '.')) || 0;
+            const value = parseItalianNumber(item[metric]); // ✅ CORREZIONE QUI
             return acc + value;
         }, 0);
         data.push(sum);
@@ -1209,6 +1250,7 @@ function sortTable(columnIndex) {
     updateSortArrows(columnIndex);
 }
 
+// ✅ CORREZIONE: Usa parseItalianNumber per l'ordinamento
 function getSortedData() {
     if (!sortColumn) return filteredData;
     
@@ -1217,8 +1259,8 @@ function getSortedData() {
         let valueB = b[sortColumn];
         
         if (sortColumn.includes('importo')) {
-            valueA = parseFloat(valueA.toString().replace(',', '.')) || 0;
-            valueB = parseFloat(valueB.toString().replace(',', '.')) || 0;
+            valueA = parseItalianNumber(valueA); // ✅ CORREZIONE QUI
+            valueB = parseItalianNumber(valueB); // ✅ CORREZIONE QUI
         }
         
         if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
@@ -1274,17 +1316,18 @@ function updateSummaryStats() {
     updateNegativeValuesAlert(stats.negativeValues);
 }
 
+// ✅ CORREZIONE: Usa parseItalianNumber per le statistiche
 function calculateStats() {
     const totalRecords = filteredData.length;
     const uniqueConcessionari = new Set(filteredData.map(item => item.concessionarioNome)).size;
     
     const totalRaccolta = filteredData.reduce((sum, item) => {
-        const value = parseFloat(item.importoRaccolta.toString().replace(',', '.')) || 0;
+        const value = parseItalianNumber(item.importoRaccolta); // ✅ CORREZIONE QUI
         return sum + value;
     }, 0);
     
     const totalSpesa = filteredData.reduce((sum, item) => {
-        const value = parseFloat(item.importoSpesa.toString().replace(',', '.')) || 0;
+        const value = parseItalianNumber(item.importoSpesa); // ✅ CORREZIONE QUI
         return sum + value;
     }, 0);
     
@@ -1292,7 +1335,7 @@ function calculateStats() {
     
     const byChannel = Object.entries(_.groupBy(filteredData, 'canale')).map(([channel, records]) => {
         const raccoltaSum = records.reduce((sum, item) => {
-            const value = parseFloat(item.importoRaccolta.toString().replace(',', '.')) || 0;
+            const value = parseItalianNumber(item.importoRaccolta); // ✅ CORREZIONE QUI
             return sum + value;
         }, 0);
         
