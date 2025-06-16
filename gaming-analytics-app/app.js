@@ -10,7 +10,7 @@ let anagraficaData = []; // Array per gestione anagrafica
 // Costanti per localStorage
 const STORAGE_KEY = 'gaming_analytics_data';
 const ANAGRAFICA_STORAGE_KEY = 'gaming_analytics_anagrafica';
-const STORAGE_VERSION = '2.0'; // Aggiornata per anagrafica
+const STORAGE_VERSION = '2.1'; // Aggiornata per nuovo formato file
 
 // Mappa per conversione mesi
 const monthNames = {
@@ -99,6 +99,7 @@ function buildAnagraficaMap() {
             anagraficaConcessioni[codiceConcessione] = item;
         }
     });
+    console.log(`Mappa anagrafica costruita con ${Object.keys(anagraficaConcessioni).length} concessioni`);
 }
 
 async function loadAnagraficaFromExcel() {
@@ -253,7 +254,10 @@ function updateAnagraficaTable() {
         </tr>
     `).join('');
     
-    document.getElementById('anagraficaCount').textContent = anagraficaData.length;
+    const countElement = document.getElementById('anagraficaCount');
+    if (countElement) {
+        countElement.textContent = anagraficaData.length;
+    }
 }
 
 function updateAnagraficaItem(index, field, value) {
@@ -380,10 +384,12 @@ function clearStoredData() {
 
 function showPersistenceIndicator() {
     const indicator = document.getElementById('persistenceIndicator');
-    indicator.classList.add('show');
-    setTimeout(() => {
-        indicator.classList.remove('show');
-    }, 2000);
+    if (indicator) {
+        indicator.classList.add('show');
+        setTimeout(() => {
+            indicator.classList.remove('show');
+        }, 2000);
+    }
 }
 
 function updateDataStatus() {
@@ -468,7 +474,21 @@ function readExcelFile(file) {
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
-                const parsedData = parseExcelData(jsonData, file.name);
+                // Riconosce il formato basandosi sulla struttura
+                let parsedData;
+                
+                // Controlla se è il nuovo formato (riga 1 contiene "Periodo da")
+                if (jsonData.length > 1 && jsonData[1][0] && 
+                    jsonData[1][0].toString().includes('Periodo da')) {
+                    
+                    console.log(`Riconosciuto nuovo formato per file: ${file.name}`);
+                    parsedData = parseNewFormatExcelData(jsonData, file.name);
+                } else {
+                    // Formato precedente
+                    console.log(`Riconosciuto formato precedente per file: ${file.name}`);
+                    parsedData = parseExcelData(jsonData, file.name);
+                }
+                
                 resolve(parsedData);
             } catch (error) {
                 reject(error);
@@ -483,6 +503,7 @@ function readExcelFile(file) {
     });
 }
 
+// Funzione per il formato precedente (mantenuta inalterata)
 function parseExcelData(jsonData, fileName) {
     if (jsonData.length < 6) {
         throw new Error(`File ${fileName}: formato non valido`);
@@ -529,20 +550,167 @@ function parseExcelData(jsonData, fileName) {
         percentualeSpesa: row[5]?.toString() || '',
         monthName: monthNames[month] || month,
         quarterName: quarterNames[quarter] || quarter,
-        isNegativeSpesa: parseFloat(row[4]?.toString().replace(',', '.') || 0) < 0
+        isNegativeSpesa: parseFloat(row[4]?.toString().replace(',', '.') || 0) < 0,
+        fileFormat: 'oldFormat'
+    }));
+}
+
+// Nuova funzione per il formato con "Periodo da..." 
+function parseNewFormatExcelData(jsonData, fileName) {
+    if (jsonData.length < 4) {
+        throw new Error(`File ${fileName}: formato non valido (troppo poche righe)`);
+    }
+
+    // Estrazione del nome del gioco dalla prima riga (prima del -)
+    const titleRow = jsonData[0][0] || '';
+    const gameNameMatch = titleRow.split('-')[0].trim();
+    const gameName = gameNameMatch || 'Gioco Sconosciuto';
+
+    // Estrazione del periodo dalla seconda riga
+    const periodRow = jsonData[1][0] || '';
+    const monthMatch = periodRow.match(/(\w+)\s+(\d{4})/);
+    
+    let month = 'Unknown', year = 'Unknown';
+    if (monthMatch) {
+        const monthNamesItalian = {
+            'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
+            'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
+            'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12'
+        };
+        
+        const monthName = monthMatch[1].toLowerCase();
+        month = monthNamesItalian[monthName] || 'Unknown';
+        year = monthMatch[2];
+    }
+
+    // Headers alla riga 3, dati dalla riga 4
+    const headers = jsonData[3];
+    if (!headers || headers.length < 6) {
+        throw new Error(`File ${fileName}: headers non trovati o incompleti`);
+    }
+
+    const dataRows = jsonData.slice(4).filter(row => row && row[0]);
+    const quarter = getQuarter(month);
+    const quarterYear = `${quarter}/${year}`;
+    
+    return dataRows.map(row => ({
+        fileName: fileName,
+        gameName: gameName,
+        month: month,
+        year: year,
+        monthYear: `${month}/${year}`,
+        quarter: quarter,
+        quarterYear: quarterYear,
+        codiceConcessione: row[0]?.toString().trim() || '',
+        ragioneSociale: row[1]?.toString().trim() || '',
+        importoRaccolta: convertToItalianNumber(row[2]), // Movimento netto
+        percentualeRaccolta: row[3]?.toString() || '', // Quota movimento
+        importoSpesa: convertToItalianNumber(row[4]),
+        percentualeSpesa: row[5]?.toString() || '',
+        monthName: monthNames[month] || month,
+        quarterName: quarterNames[quarter] || quarter,
+        isNegativeSpesa: parseFloat(row[4]?.toString().replace(',', '.') || 0) < 0,
+        fileFormat: 'newFormat' // Flag per identificare il nuovo formato
     }));
 }
 
 function convertToItalianNumber(value) {
     if (value === null || value === undefined || value === '') return '0,00';
     
-    let numStr = value.toString();
+    let numStr = value.toString().trim();
     
+    // Se è già un numero JavaScript, formattalo in italiano
     if (typeof value === 'number') {
         return value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     
-    return numStr.replace('.', ',');
+    // Rimuovi spazi e caratteri non numerici tranne punti e virgole
+    numStr = numStr.replace(/[^\d.,+-]/g, '');
+    
+    // Se è vuoto dopo la pulizia, ritorna zero
+    if (!numStr) return '0,00';
+    
+    // Riconosce i diversi formati numerici
+    
+    // Formato italiano: 54.548.383,95 (punti per migliaia, virgola per decimali)
+    // Pattern: uno o più gruppi di cifre separati da punti, seguito opzionalmente da virgola e decimali
+    const formatoItalianoPattern = /^[+-]?(\d{1,3}(\.\d{3})*)(,\d+)?$/;
+    
+    // Formato americano: 54,548,383.95 (virgole per migliaia, punto per decimali)
+    const formatoAmericanoPattern = /^[+-]?(\d{1,3}(,\d{3})*)(\.\d+)?$/;
+    
+    // Numero semplice senza separatori: 12345.67 o 12345,67
+    const numeroSemplicePattern = /^[+-]?\d+[.,]?\d*$/;
+    
+    if (formatoItalianoPattern.test(numStr)) {
+        // È già in formato italiano corretto, non fare nulla
+        console.log(`Numero già in formato italiano: ${numStr}`);
+        return numStr;
+        
+    } else if (formatoAmericanoPattern.test(numStr)) {
+        // Formato americano: converti in italiano
+        console.log(`Convertendo da formato americano: ${numStr}`);
+        
+        // Rimuovi le virgole (separatori migliaia) e sostituisci il punto con virgola
+        let converted = numStr.replace(/,/g, '').replace('.', ',');
+        
+        // Aggiungi i punti come separatori delle migliaia se necessario
+        const parts = converted.split(',');
+        const integerPart = parts[0];
+        const decimalPart = parts[1] || '';
+        
+        // Formatta la parte intera con i punti
+        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        
+        converted = decimalPart ? `${formattedInteger},${decimalPart}` : formattedInteger;
+        console.log(`Convertito in: ${converted}`);
+        return converted;
+        
+    } else if (numeroSemplicePattern.test(numStr)) {
+        // Numero semplice: gestisci il separatore decimale
+        console.log(`Numero semplice: ${numStr}`);
+        
+        // Se usa il punto come decimale, convertilo in virgola
+        if (numStr.includes('.') && !numStr.includes(',')) {
+            numStr = numStr.replace('.', ',');
+        }
+        
+        // Aggiungi separatori delle migliaia se il numero è abbastanza grande
+        const parts = numStr.split(',');
+        const integerPart = parts[0];
+        const decimalPart = parts[1] || '';
+        
+        if (integerPart.length > 3) {
+            const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            numStr = decimalPart ? `${formattedInteger},${decimalPart}` : formattedInteger;
+        }
+        
+        return numStr;
+    }
+    
+    // Se non riconosce il formato, prova a interpretarlo come numero
+    console.log(`Formato non riconosciuto, tentativo di parsing: ${numStr}`);
+    
+    // Rimuovi tutti i separatori e prova a fare il parsing
+    const cleanNumber = numStr.replace(/[.,]/g, '');
+    const parsedNumber = parseFloat(cleanNumber);
+    
+    if (!isNaN(parsedNumber)) {
+        // Se ha più di 2 cifre, probabilmente i decimali sono le ultime 2
+        if (cleanNumber.length > 2) {
+            const integerPart = cleanNumber.slice(0, -2);
+            const decimalPart = cleanNumber.slice(-2);
+            const formatted = `${integerPart}.${decimalPart}`;
+            const finalNumber = parseFloat(formatted);
+            return finalNumber.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else {
+            return parsedNumber.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    }
+    
+    // Come ultimo tentativo, ritorna il valore originale
+    console.warn(`Impossibile convertire il numero: ${numStr}`);
+    return numStr;
 }
 
 function getQuarter(month) {
@@ -698,18 +866,23 @@ function updateMultiSelectText(selectId) {
 }
 
 function updateFilterCounts() {
-    document.getElementById('gameCount').textContent = `(${[...new Set(allData.map(item => item.gameName))].length})`;
-    document.getElementById('yearCount').textContent = `(${[...new Set(allData.map(item => item.year))].length})`;
-    document.getElementById('quarterCount').textContent = `(${[...new Set(allData.map(item => item.quarterYear))].length})`;
-    document.getElementById('monthCount').textContent = `(${[...new Set(allData.map(item => item.monthYear))].length})`;
-    document.getElementById('channelCount').textContent = `(${[...new Set(allData.map(item => item.canale))].length})`;
-    document.getElementById('concessionaryCount').textContent = `(${[...new Set(allData.map(item => item.concessionarioNome))].length})`;
-    if (document.getElementById('proprietaCount')) {
-        document.getElementById('proprietaCount').textContent = `(${[...new Set(allData.map(item => item.concessionarioProprietà))].length})`;
-    }
-    if (document.getElementById('ragioneSocialeCount')) {
-        document.getElementById('ragioneSocialeCount').textContent = `(${[...new Set(allData.map(item => item.ragioneSociale))].length})`;
-    }
+    const gameCountEl = document.getElementById('gameCount');
+    const yearCountEl = document.getElementById('yearCount');
+    const quarterCountEl = document.getElementById('quarterCount');
+    const monthCountEl = document.getElementById('monthCount');
+    const channelCountEl = document.getElementById('channelCount');
+    const concessionaryCountEl = document.getElementById('concessionaryCount');
+    const proprietaCountEl = document.getElementById('proprietaCount');
+    const ragioneSocialeCountEl = document.getElementById('ragioneSocialeCount');
+
+    if (gameCountEl) gameCountEl.textContent = `(${[...new Set(allData.map(item => item.gameName))].length})`;
+    if (yearCountEl) yearCountEl.textContent = `(${[...new Set(allData.map(item => item.year))].length})`;
+    if (quarterCountEl) quarterCountEl.textContent = `(${[...new Set(allData.map(item => item.quarterYear))].length})`;
+    if (monthCountEl) monthCountEl.textContent = `(${[...new Set(allData.map(item => item.monthYear))].length})`;
+    if (channelCountEl) channelCountEl.textContent = `(${[...new Set(allData.map(item => item.canale))].length})`;
+    if (concessionaryCountEl) concessionaryCountEl.textContent = `(${[...new Set(allData.map(item => item.concessionarioNome))].length})`;
+    if (proprietaCountEl) proprietaCountEl.textContent = `(${[...new Set(allData.map(item => item.concessionarioProprietà))].length})`;
+    if (ragioneSocialeCountEl) ragioneSocialeCountEl.textContent = `(${[...new Set(allData.map(item => item.ragioneSociale))].length})`;
 }
 
 function getSelectedValues(selectId) {
