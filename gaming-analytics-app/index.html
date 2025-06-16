@@ -144,6 +144,24 @@
         .data-persistence-indicator.show {
             opacity: 1;
         }
+
+        .channel-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .channel-fisico {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        
+        .channel-online {
+            background: #dcfce7;
+            color: #166534;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
@@ -156,18 +174,22 @@
         <!-- Header -->
         <div class="glass-effect rounded-lg p-6 mb-6">
             <h1 class="text-3xl font-bold text-white mb-2">Gaming Analytics Dashboard</h1>
-            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi</p>
+            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi (Fisico & Online)</p>
             <div id="dataStatus" class="mt-2 text-sm text-blue-200"></div>
         </div>
 
         <!-- Upload Section -->
         <div class="glass-effect rounded-lg p-6 mb-6">
             <h2 class="text-xl font-semibold text-white mb-4">Carica File Excel</h2>
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-4 mb-4">
                 <input type="file" id="fileInput" accept=".xlsx,.xls" multiple 
                        class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
                               file:rounded-full file:border-0 file:text-sm file:font-semibold 
                               file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <select id="channelSelector" class="p-2 border border-gray-300 rounded-md bg-white text-gray-700">
+                    <option value="fisico">📍 Fisico</option>
+                    <option value="online">💻 Online</option>
+                </select>
                 <button onclick="processFiles()" 
                         class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg 
                                transition-colors duration-200">
@@ -179,13 +201,16 @@
                     Cancella Dati
                 </button>
             </div>
+            <div class="text-xs text-gray-400 mb-2">
+                💡 Seleziona il canale prima di caricare i file. I file attuali sono considerati "Fisico" per default.
+            </div>
             <div id="uploadStatus" class="mt-4 text-sm text-gray-300"></div>
         </div>
 
         <!-- Filters Section con design migliorato -->
         <div class="filter-container mb-6" id="filtersSection" style="display: none;">
             <h2 class="text-xl font-semibold text-gray-800 mb-6">Filtri Avanzati</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <!-- Filtro Giochi -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -220,15 +245,49 @@
                     </div>
                 </div>
 
+                <!-- Filtro Trimestri -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        📊 Trimestri
+                        <span id="quarterCount" class="text-blue-600"></span>
+                    </label>
+                    <div class="multi-select" id="quarterFilter">
+                        <button type="button" class="multi-select-button" onclick="toggleDropdown('quarterFilter')">
+                            <span class="selected-text">Seleziona trimestri...</span>
+                            <span class="float-right">▼</span>
+                        </button>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-options"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Filtro Mesi -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        📊 Mesi
+                        🗓️ Mesi
                         <span id="monthCount" class="text-blue-600"></span>
                     </label>
                     <div class="multi-select" id="monthFilter">
                         <button type="button" class="multi-select-button" onclick="toggleDropdown('monthFilter')">
                             <span class="selected-text">Seleziona mesi...</span>
+                            <span class="float-right">▼</span>
+                        </button>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-options"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro Canale -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        🌐 Canale
+                        <span id="channelCount" class="text-blue-600"></span>
+                    </label>
+                    <div class="multi-select" id="channelFilter">
+                        <button type="button" class="multi-select-button" onclick="toggleDropdown('channelFilter')">
+                            <span class="selected-text">Seleziona canali...</span>
                             <span class="float-right">▼</span>
                         </button>
                         <div class="multi-select-dropdown">
@@ -277,6 +336,21 @@
                                transition-colors duration-200 font-medium">
                     ☐ Deseleziona Tutto
                 </button>
+                <button onclick="filterByChannel('fisico')" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg 
+                               transition-colors duration-200 text-sm">
+                    📍 Solo Fisico
+                </button>
+                <button onclick="filterByChannel('online')" 
+                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg 
+                               transition-colors duration-200 text-sm">
+                    💻 Solo Online
+                </button>
+                <button onclick="filterByCurrentQuarter()" 
+                        class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg 
+                               transition-colors duration-200 text-sm">
+                    📊 Trimestre Corrente
+                </button>
             </div>
 
             <!-- Riassunto filtri attivi -->
@@ -303,6 +377,14 @@
                         <option value="importoSpesa">💸 Importo Spesa</option>
                         <option value="percentualeRaccolta">📈 Percentuale Raccolta</option>
                         <option value="percentualeSpesa">📉 Percentuale Spesa</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <select id="chartGroupBy" class="w-full p-2 border border-gray-300 rounded-lg bg-white">
+                        <option value="ragioneSociale">Raggruppa per Concessionario</option>
+                        <option value="canale">Raggruppa per Canale</option>
+                        <option value="quarterYear">Raggruppa per Trimestre</option>
+                        <option value="monthYear">Raggruppa per Mese</option>
                     </select>
                 </div>
                 <canvas id="mainChart" width="400" height="300"></canvas>
