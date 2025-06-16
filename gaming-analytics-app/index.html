@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaming Analytics Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .sortable:hover {
+            background-color: #f3f4f6;
+        }
+        .sort-arrow {
+            display: inline-block;
+            margin-left: 5px;
+            transition: transform 0.2s;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
+    <div class="container mx-auto p-6">
+        <!-- Header -->
+        <div class="glass-effect rounded-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold text-white mb-2">Gaming Analytics Dashboard</h1>
+            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="glass-effect rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-white mb-4">Carica File Excel</h2>
+            <div class="flex items-center space-x-4">
+                <input type="file" id="fileInput" accept=".xlsx,.xls" multiple 
+                       class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
+                              file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                              file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <button onclick="processFiles()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg 
+                               transition-colors duration-200">
+                    Elabora File
+                </button>
+            </div>
+            <div id="uploadStatus" class="mt-4 text-sm text-gray-300"></div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="glass-effect rounded-lg p-6 mb-6" id="filtersSection" style="display: none;">
+            <h2 class="text-xl font-semibold text-white mb-4">Filtri</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Giochi</label>
+                    <select id="gameFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Anni</label>
+                    <select id="yearFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Mesi</label>
+                    <select id="monthFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Concessionari</label>
+                    <select id="concessionaryFilter" multiple class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4 flex space-x-4">
+                <button onclick="applyFilters()" 
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                    Applica Filtri
+                </button>
+                <button onclick="resetFilters()" 
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" id="analyticsSection" style="display: none;">
+            <!-- Chart Container -->
+            <div class="glass-effect rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Grafici</h3>
+                <div class="mb-4">
+                    <select id="chartType" class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                        <option value="bar">Grafico a Barre</option>
+                        <option value="line">Grafico a Linee</option>
+                        <option value="pie">Grafico a Torta</option>
+                        <option value="doughnut">Grafico a Ciambella</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <select id="chartMetric" class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                        <option value="importoRaccolta">Importo Raccolta</option>
+                        <option value="importoSpesa">Importo Spesa</option>
+                        <option value="percentualeRaccolta">Percentuale Raccolta</option>
+                        <option value="percentualeSpesa">Percentuale Spesa</option>
+                    </select>
+                </div>
+                <canvas id="mainChart" width="400" height="300"></canvas>
+                <button onclick="downloadChart()" 
+                        class="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                    Scarica Grafico
+                </button>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="glass-effect rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Statistiche Riassuntive</h3>
+                <div id="summaryStats" class="space-y-4">
+                    <!-- Stats will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="glass-effect rounded-lg p-6" id="tableSection" style="display: none;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-white">Tabella Dati</h3>
+                <div class="space-x-2">
+                    <button onclick="downloadTable('csv')" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                        Scarica CSV
+                    </button>
+                    <button onclick="downloadTable('excel')" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        Scarica Excel
+                    </button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="dataTable" class="min-w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
+                    <thead id="tableHead" class="bg-gray-50">
+                        <!-- Headers will be populated here -->
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
