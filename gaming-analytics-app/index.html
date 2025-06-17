@@ -31,12 +31,75 @@
             transition: transform 0.2s;
         }
         
-        /* 🆕 Stili migliorati per i filtri con layout su più righe */
-        .filter-container {
+        /* 🆕 Stili per il sistema di navigazione */
+        .nav-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
-            padding: 20px;
+            padding: 0;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .nav-tab {
+            flex: 1;
+            padding: 16px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+        
+        .nav-tab:last-child {
+            border-right: none;
+        }
+        
+        .nav-tab:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-tab.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 -3px 0 0 #fbbf24;
+        }
+        
+        .nav-tab-icon {
+            display: block;
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-tab-text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 24px;
+            min-height: 400px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Stili migliorati per i filtri */
+        .filter-container {
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
         }
         
         .multi-select {
@@ -204,12 +267,12 @@
         }
 
         /* Stili per anagrafica */
-        .anagrafica-container {
+        .section-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
+            margin-bottom: 20px;
         }
 
         /* 🆕 Stili per i badge dei tipi di gioco ippico */
@@ -300,20 +363,66 @@
             align-items: start;
         }
 
-        /* Stili per le sezioni mappature */
-        .mappings-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
+        /* 🆕 Layout specifico per la sezione grafici */
+        .charts-section {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: calc(100vh - 200px);
+        }
+        
+        .chart-container {
+            flex: 2;
+            min-height: 500px;
+        }
+        
+        .stats-container {
+            flex: 1;
+            min-height: 200px;
+        }
+        
+        /* Responsive per sezione grafici */
+        @media (max-width: 1024px) {
+            .charts-section {
+                height: auto;
+            }
+            
+            .chart-container {
+                min-height: 400px;
+            }
         }
 
+        /* Stili per le sezioni mappature */
         .mapping-section {
             background: #f8f9fa;
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 16px;
+        }
+
+        /* 🆕 Indicatore sezione attiva */
+        .section-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 999;
+            transition: all 0.3s ease;
+        }
+
+        /* Animazioni per transizioni */
+        .tab-content {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -323,468 +432,616 @@
         📊 Dati salvati automaticamente
     </div>
 
+    <!-- Indicatore sezione attiva -->
+    <div id="sectionIndicator" class="section-indicator">
+        📊 Gestione
+    </div>
+
     <div class="container mx-auto p-6">
         <!-- Header -->
         <div class="glass-effect rounded-lg p-6 mb-6">
             <h1 class="text-3xl font-bold text-white mb-2">Gaming Analytics Dashboard</h1>
-            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi con Anagrafica Concessioni, mappature nomi e comparti</p>
+            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi con sistema di navigazione avanzato</p>
             <div id="dataStatus" class="mt-2 text-sm text-blue-200"></div>
         </div>
 
-        <!-- Upload Section -->
-        <div class="glass-effect rounded-lg p-6 mb-6">
-            <h2 class="text-xl font-semibold text-white mb-4">Carica File Excel</h2>
-            <div class="flex items-center space-x-4 mb-4 flex-wrap gap-2">
-                <input type="file" id="fileInput" accept=".xlsx,.xls" multiple 
-                       class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
-                              file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                              file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                <button onclick="processFiles()" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg 
-                               transition-colors duration-200 whitespace-nowrap">
-                    Elabora File
-                </button>
-                <button onclick="clearStoredData()" 
-                        class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg 
-                               transition-colors duration-200 whitespace-nowrap">
-                    Cancella Dati
-                </button>
-                <button onclick="toggleAnagraficaSection()" 
-                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg 
-                               transition-colors duration-200 whitespace-nowrap">
-                    📖 Gestisci Anagrafica
-                </button>
-                <button onclick="toggleMappingsSection()" 
-                        class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg 
-                               transition-colors duration-200 whitespace-nowrap">
-                    🎯 Gestisci Mappature
-                </button>
-            </div>
-            <div class="text-xs text-gray-400 mb-2">
-                💡 Supporta 3 formati Excel + mappature personalizzabili: <br>
-                • <strong>Formato Standard</strong>: Statistiche GAD normali<br>
-                • <strong>Formato Nuovo</strong>: Con "Periodo da..." nella riga 2<br>
-                • <strong>🆕 Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA<br>
-                • <strong>🎯 Mappature</strong>: Nomi giochi personalizzati e classificazione per comparti<br>
-                Il canale viene assegnato automaticamente tramite l'anagrafica concessioni.
-            </div>
-            <div id="uploadStatus" class="mt-4 text-sm text-gray-300"></div>
-        </div>
-
-        <!-- 🆕 Sezione Gestione Mappature -->
-        <div class="mappings-container" id="mappingsSection" style="display: none;">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">🎯 Gestione Mappature</h2>
-            
-            <!-- Mappatura Nomi Giochi -->
-            <div class="mapping-section">
-                <h3 class="text-lg font-medium text-gray-700 mb-3">📝 Mappatura Nomi Giochi</h3>
-                <div class="flex items-center space-x-4 mb-3">
-                    <input type="file" id="nomiGiochiFileInput" accept=".xlsx,.xls" 
-                           class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
-                                  file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                                  file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
-                    <button onclick="loadNomiGiochiFromExcel()" 
-                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg 
-                                   transition-colors duration-200 whitespace-nowrap">
-                        Carica Nomi
-                    </button>
+        <!-- 🆕 Sistema di Navigazione -->
+        <div class="nav-container mb-6">
+            <!-- Tab Navigation -->
+            <div class="nav-tabs">
+                <div class="nav-tab active" onclick="switchTab('gestione')">
+                    <span class="nav-tab-icon">⚙️</span>
+                    <span class="nav-tab-text">Gestione</span>
                 </div>
-                <div class="text-xs text-gray-500">
-                    File Excel con struttura: <strong>Nome gioco da file | Nome gioco da mostrare</strong><br>
-                    Cambia i nomi di visualizzazione dei giochi (es: "Scommesse Sportive" → "SCOMMESSE SPORTIVE QF")
+                <div class="nav-tab" onclick="switchTab('filtri')">
+                    <span class="nav-tab-icon">🎛️</span>
+                    <span class="nav-tab-text">Filtri</span>
+                </div>
+                <div class="nav-tab" onclick="switchTab('grafici')">
+                    <span class="nav-tab-icon">📊</span>
+                    <span class="nav-tab-text">Grafici e Statistiche</span>
+                </div>
+                <div class="nav-tab" onclick="switchTab('tabelle')">
+                    <span class="nav-tab-icon">📋</span>
+                    <span class="nav-tab-text">Tabelle</span>
                 </div>
             </div>
 
-            <!-- Mappatura Comparti -->
-            <div class="mapping-section">
-                <h3 class="text-lg font-medium text-gray-700 mb-3">🏢 Mappatura Comparti</h3>
-                <div class="flex items-center space-x-4 mb-3">
-                    <input type="file" id="compartiFileInput" accept=".xlsx,.xls" 
-                           class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
-                                  file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                                  file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                    <button onclick="loadCompartiFromExcel()" 
-                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg 
-                                   transition-colors duration-200 whitespace-nowrap">
-                        Carica Comparti
-                    </button>
+            <!-- 🆕 TAB 1: GESTIONE -->
+            <div id="tab-gestione" class="tab-content active">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">⚙️ Gestione Sistema</h2>
+                
+                <!-- Upload Section -->
+                <div class="section-container">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📁 Carica File Excel</h3>
+                    <div class="flex items-center space-x-4 mb-4 flex-wrap gap-2">
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" multiple 
+                               class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
+                                      file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                                      file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <button onclick="processFiles()" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg 
+                                       transition-colors duration-200 whitespace-nowrap">
+                            Elabora File
+                        </button>
+                        <button onclick="clearStoredData()" 
+                                class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg 
+                                       transition-colors duration-200 whitespace-nowrap">
+                            Cancella Dati
+                        </button>
+                    </div>
+                    <div class="text-xs text-gray-600 mb-4">
+                        💡 Supporta 3 formati Excel: <br>
+                        • <strong>Formato Standard</strong>: Statistiche GAD normali<br>
+                        • <strong>Formato Nuovo</strong>: Con "Periodo da..." nella riga 2<br>
+                        • <strong>🆕 Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA
+                    </div>
+                    <div id="uploadStatus" class="text-sm text-gray-600"></div>
                 </div>
-                <div class="text-xs text-gray-500">
-                    File Excel con struttura: <strong>Nome gioco | Comparto</strong><br>
-                    Classifica i giochi per comparto (es: "Slot Machine" → "GIOCHI DI SORTE")
-                </div>
-            </div>
-        </div>
 
-        <!-- Sezione Anagrafica Concessioni -->
-        <div class="anagrafica-container" id="anagraficaSection" style="display: none;">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">📖 Anagrafica Concessioni</h2>
-            
-            <!-- Caricamento anagrafica -->
-            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h3 class="text-lg font-medium text-gray-700 mb-3">Carica Anagrafica da Excel</h3>
-                <div class="flex items-center space-x-4">
-                    <input type="file" id="anagraficaFileInput" accept=".xlsx,.xls" 
-                           class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
-                                  file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                                  file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                    <button onclick="loadAnagraficaFromExcel()" 
-                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg 
-                                   transition-colors duration-200">
-                        Carica Anagrafica
-                    </button>
-                    <button onclick="addNewAnagraficaItem()" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg 
-                                   transition-colors duration-200">
-                        ➕ Aggiungi
-                    </button>
-                    <button onclick="exportAnagrafica()" 
-                            class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg 
-                                   transition-colors duration-200">
-                        📥 Esporta
-                    </button>
-                </div>
-                <div class="text-xs text-gray-500 mt-2">
-                    Carica il file Excel contenente il foglio "ANAGRAFICA CONCESSIONI" o un foglio con struttura: 
-                    N. CONC. | CONCESSIONARIO | RAGIONE SOCIALE | CANALE | PROPRIETA'
-                </div>
-            </div>
-
-            <!-- Tabella anagrafica -->
-            <div class="bg-white rounded-lg overflow-hidden">
-                <div class="px-4 py-3 bg-gray-50 border-b">
-                    <h4 class="text-md font-medium text-gray-700">
-                        Concessioni attive: <span id="anagraficaCount" class="text-blue-600">0</span>
-                    </h4>
-                </div>
-                <div class="table-container" style="max-height: 400px;">
-                    <table class="min-w-full">
-                        <thead class="bg-gray-50 sticky top-0">
-                            <tr>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cod. Concessione</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Concessionario</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ragione Sociale</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Canale</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Proprietà</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody id="anagraficaTableBody">
-                            <!-- Dati anagrafica saranno popolati qui -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- 🆕 Filters Section con design migliorato e layout su più righe -->
-        <div class="filter-container mb-6" id="filtersSection" style="display: none;">
-            <h2 class="text-xl font-semibold text-gray-800 mb-6">Filtri Avanzati</h2>
-            
-            <div class="filters-section">
-                <!-- Prima riga di filtri -->
-                <div class="filters-row">
-                    <!-- Filtro Giochi -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            🎮 Giochi
-                            <span id="gameCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="gameFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('gameFilter')">
-                                <span class="selected-text">Seleziona giochi...</span>
-                                <span class="float-right">▼</span>
+                <!-- Gestione Mappature -->
+                <div class="section-container">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">🎯 Gestione Mappature</h3>
+                    
+                    <!-- Mappatura Nomi Giochi -->
+                    <div class="mapping-section">
+                        <h4 class="text-lg font-medium text-gray-700 mb-3">📝 Mappatura Nomi Giochi</h4>
+                        <div class="flex items-center space-x-4 mb-3">
+                            <input type="file" id="nomiGiochiFileInput" accept=".xlsx,.xls" 
+                                   class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
+                                          file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                                          file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                            <button onclick="loadNomiGiochiFromExcel()" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg 
+                                           transition-colors duration-200 whitespace-nowrap">
+                                Carica Nomi
                             </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            File Excel con struttura: <strong>Nome gioco da file | Nome gioco da mostrare</strong>
                         </div>
                     </div>
 
-                    <!-- 🆕 Filtro Comparto -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            🏢 Comparto
-                            <span id="compartoCount" class="text-orange-600"></span>
-                        </label>
-                        <div class="multi-select" id="compartoFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('compartoFilter')">
-                                <span class="selected-text">Seleziona comparti...</span>
-                                <span class="float-right">▼</span>
+                    <!-- Mappatura Comparti -->
+                    <div class="mapping-section">
+                        <h4 class="text-lg font-medium text-gray-700 mb-3">🏢 Mappatura Comparti</h4>
+                        <div class="flex items-center space-x-4 mb-3">
+                            <input type="file" id="compartiFileInput" accept=".xlsx,.xls" 
+                                   class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
+                                          file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                                          file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            <button onclick="loadCompartiFromExcel()" 
+                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg 
+                                           transition-colors duration-200 whitespace-nowrap">
+                                Carica Comparti
                             </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
                         </div>
-                    </div>
-
-                    <!-- Filtro Anni -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            📅 Anni
-                            <span id="yearCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="yearFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('yearFilter')">
-                                <span class="selected-text">Seleziona anni...</span>
-                                <span class="float-right">▼</span>
-                            </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filtro Trimestri -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            📊 Trimestri
-                            <span id="quarterCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="quarterFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('quarterFilter')">
-                                <span class="selected-text">Seleziona trimestri...</span>
-                                <span class="float-right">▼</span>
-                            </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filtro Mesi -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            🗓️ Mesi
-                            <span id="monthCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="monthFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('monthFilter')">
-                                <span class="selected-text">Seleziona mesi...</span>
-                                <span class="float-right">▼</span>
-                            </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
+                        <div class="text-xs text-gray-500">
+                            File Excel con struttura: <strong>Nome gioco | Comparto</strong>
                         </div>
                     </div>
                 </div>
 
-                <!-- Seconda riga di filtri -->
-                <div class="filters-row">
-                    <!-- Filtro Canale -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            🌐 Canale
-                            <span id="channelCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="channelFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('channelFilter')">
-                                <span class="selected-text">Seleziona canali...</span>
-                                <span class="float-right">▼</span>
+                <!-- Anagrafica Concessioni -->
+                <div class="section-container">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📖 Anagrafica Concessioni</h3>
+                    
+                    <!-- Caricamento anagrafica -->
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <h4 class="text-lg font-medium text-gray-700 mb-3">Carica Anagrafica da Excel</h4>
+                        <div class="flex items-center space-x-4 mb-3">
+                            <input type="file" id="anagraficaFileInput" accept=".xlsx,.xls" 
+                                   class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
+                                          file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                                          file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <button onclick="loadAnagraficaFromExcel()" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg 
+                                           transition-colors duration-200">
+                                Carica Anagrafica
                             </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
+                            <button onclick="addNewAnagraficaItem()" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg 
+                                           transition-colors duration-200">
+                                ➕ Aggiungi
+                            </button>
+                            <button onclick="exportAnagrafica()" 
+                                    class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg 
+                                           transition-colors duration-200">
+                                📥 Esporta
+                            </button>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            Struttura: N. CONC. | CONCESSIONARIO | RAGIONE SOCIALE | CANALE | PROPRIETA'
                         </div>
                     </div>
 
-                    <!-- 🆕 Filtro Tipo Gioco Ippico -->
-                    <div id="tipoGiocoFilterDiv" style="display: none;">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            🎯 Tipo Gioco
-                            <span id="tipoGiocoCount" class="text-purple-600"></span>
-                        </label>
-                        <div class="multi-select" id="tipoGiocoFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('tipoGiocoFilter')">
-                                <span class="selected-text">Seleziona tipi...</span>
-                                <span class="float-right">▼</span>
-                            </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
+                    <!-- Tabella anagrafica -->
+                    <div class="bg-white rounded-lg overflow-hidden">
+                        <div class="px-4 py-3 bg-gray-50 border-b">
+                            <h4 class="text-md font-medium text-gray-700">
+                                Concessioni attive: <span id="anagraficaCount" class="text-blue-600">0</span>
+                            </h4>
                         </div>
-                    </div>
-
-                    <!-- Filtro Concessionari -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            🏢 Concessionari
-                            <span id="concessionaryCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="concessionaryFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('concessionaryFilter')">
-                                <span class="selected-text">Seleziona concessionari...</span>
-                                <span class="float-right">▼</span>
-                            </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filtro Proprietà -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            🔑 Proprietà
-                            <span id="proprietaCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="proprietaFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('proprietaFilter')">
-                                <span class="selected-text">Seleziona proprietà...</span>
-                                <span class="float-right">▼</span>
-                            </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filtro Ragione Sociale -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            📄 Ragione Sociale
-                            <span id="ragioneSocialeCount" class="text-blue-600"></span>
-                        </label>
-                        <div class="multi-select" id="ragioneSocialeFilter">
-                            <button type="button" class="multi-select-button" onclick="toggleDropdown('ragioneSocialeFilter')">
-                                <span class="selected-text">Seleziona ragioni sociali...</span>
-                                <span class="float-right">▼</span>
-                            </button>
-                            <div class="multi-select-dropdown">
-                                <div class="multi-select-options"></div>
-                            </div>
+                        <div class="table-container" style="max-height: 400px;">
+                            <table class="min-w-full">
+                                <thead class="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cod. Concessione</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Concessionario</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ragione Sociale</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Canale</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Proprietà</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="anagraficaTableBody">
+                                    <!-- Dati anagrafica saranno popolati qui -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Pulsanti azione -->
-            <div class="mt-6 flex flex-wrap gap-4">
-                <button onclick="applyFilters()" 
-                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg 
-                               transition-colors duration-200 font-medium">
-                    ✅ Applica Filtri
-                </button>
-                <button onclick="resetFilters()" 
-                        class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg 
-                               transition-colors duration-200 font-medium">
-                    🔄 Reset Filtri
-                </button>
-                <button onclick="selectAllFilters()" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg 
-                               transition-colors duration-200 font-medium">
-                    ☑️ Seleziona Tutto
-                </button>
-                <button onclick="deselectAllFilters()" 
-                        class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg 
-                               transition-colors duration-200 font-medium">
-                    ☐ Deseleziona Tutto
-                </button>
-                <button onclick="filterByChannel('fisico')" 
-                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg 
-                               transition-colors duration-200 text-sm">
-                    📍 Solo Fisico
-                </button>
-                <button onclick="filterByChannel('online')" 
-                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg 
-                               transition-colors duration-200 text-sm">
-                    💻 Solo Online
-                </button>
-                <button onclick="filterByCurrentQuarter()" 
-                        class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg 
-                               transition-colors duration-200 text-sm">
-                    📊 Trimestre Corrente
-                </button>
+            <!-- 🆕 TAB 2: FILTRI -->
+            <div id="tab-filtri" class="tab-content">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">🎛️ Filtri Avanzati</h2>
+                
+                <div class="filter-container" id="filtersSection" style="display: none;">
+                    <div class="filters-section">
+                        <!-- Prima riga di filtri -->
+                        <div class="filters-row">
+                            <!-- Filtro Giochi -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🎮 Giochi
+                                    <span id="gameCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="gameFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('gameFilter')">
+                                        <span class="selected-text">Seleziona giochi...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Comparto -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🏢 Comparto
+                                    <span id="compartoCount" class="text-orange-600"></span>
+                                </label>
+                                <div class="multi-select" id="compartoFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('compartoFilter')">
+                                        <span class="selected-text">Seleziona comparti...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Anni -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    📅 Anni
+                                    <span id="yearCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="yearFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('yearFilter')">
+                                        <span class="selected-text">Seleziona anni...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Trimestri -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    📊 Trimestri
+                                    <span id="quarterCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="quarterFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('quarterFilter')">
+                                        <span class="selected-text">Seleziona trimestri...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Mesi -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🗓️ Mesi
+                                    <span id="monthCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="monthFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('monthFilter')">
+                                        <span class="selected-text">Seleziona mesi...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Seconda riga di filtri -->
+                        <div class="filters-row">
+                            <!-- Filtro Canale -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🌐 Canale
+                                    <span id="channelCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="channelFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('channelFilter')">
+                                        <span class="selected-text">Seleziona canali...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Tipo Gioco Ippico -->
+                            <div id="tipoGiocoFilterDiv" style="display: none;">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🎯 Tipo Gioco
+                                    <span id="tipoGiocoCount" class="text-purple-600"></span>
+                                </label>
+                                <div class="multi-select" id="tipoGiocoFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('tipoGiocoFilter')">
+                                        <span class="selected-text">Seleziona tipi...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Concessionari -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🏢 Concessionari
+                                    <span id="concessionaryCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="concessionaryFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('concessionaryFilter')">
+                                        <span class="selected-text">Seleziona concessionari...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Proprietà -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🔑 Proprietà
+                                    <span id="proprietaCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="proprietaFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('proprietaFilter')">
+                                        <span class="selected-text">Seleziona proprietà...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtro Ragione Sociale -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    📄 Ragione Sociale
+                                    <span id="ragioneSocialeCount" class="text-blue-600"></span>
+                                </label>
+                                <div class="multi-select" id="ragioneSocialeFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('ragioneSocialeFilter')">
+                                        <span class="selected-text">Seleziona ragioni sociali...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pulsanti azione -->
+                    <div class="mt-6 flex flex-wrap gap-4">
+                        <button onclick="applyFilters()" 
+                                class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg 
+                                       transition-colors duration-200 font-medium">
+                            ✅ Applica Filtri
+                        </button>
+                        <button onclick="resetFilters()" 
+                                class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg 
+                                       transition-colors duration-200 font-medium">
+                            🔄 Reset Filtri
+                        </button>
+                        <button onclick="selectAllFilters()" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg 
+                                       transition-colors duration-200 font-medium">
+                            ☑️ Seleziona Tutto
+                        </button>
+                        <button onclick="deselectAllFilters()" 
+                                class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg 
+                                       transition-colors duration-200 font-medium">
+                            ☐ Deseleziona Tutto
+                        </button>
+                        <button onclick="filterByChannel('fisico')" 
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg 
+                                       transition-colors duration-200 text-sm">
+                            📍 Solo Fisico
+                        </button>
+                        <button onclick="filterByChannel('online')" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg 
+                                       transition-colors duration-200 text-sm">
+                            💻 Solo Online
+                        </button>
+                        <button onclick="filterByCurrentQuarter()" 
+                                class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg 
+                                       transition-colors duration-200 text-sm">
+                            📊 Trimestre Corrente
+                        </button>
+                    </div>
+
+                    <!-- Riassunto filtri attivi -->
+                    <div id="activeFilters" class="mt-4 p-4 bg-gray-50 rounded-lg" style="display: none;">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Filtri Attivi:</h4>
+                        <div id="filterSummary" class="text-sm text-gray-600"></div>
+                    </div>
+                </div>
+
+                <!-- Messaggio quando non ci sono dati -->
+                <div id="noDataMessage" class="text-center text-gray-600 mt-8">
+                    <div class="text-6xl mb-4">📊</div>
+                    <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
+                    <p>Carica dei file Excel dalla sezione "Gestione" per abilitare i filtri.</p>
+                </div>
             </div>
 
-            <!-- Riassunto filtri attivi -->
-            <div id="activeFilters" class="mt-4 p-4 bg-gray-50 rounded-lg" style="display: none;">
-                <h4 class="text-sm font-medium text-gray-700 mb-2">Filtri Attivi:</h4>
-                <div id="filterSummary" class="text-sm text-gray-600"></div>
-            </div>
-        </div>
+            <!-- 🆕 TAB 3: GRAFICI E STATISTICHE -->
+            <div id="tab-grafici" class="tab-content">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">📊 Grafici e Statistiche</h2>
+                
+                <div id="analyticsSection" class="charts-section" style="display: none;">
+                    <!-- Chart Container (in alto per più spazio) -->
+                    <div class="chart-container">
+                        <div class="glass-effect rounded-lg p-6 h-full">
+                            <h3 class="text-lg font-semibold text-white mb-4">📈 Grafici Interattivi</h3>
+                            <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <select id="chartType" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
+                                    <option value="bar">📊 Grafico a Barre</option>
+                                    <option value="line">📈 Grafico a Linee</option>
+                                    <option value="pie">🥧 Grafico a Torta</option>
+                                    <option value="doughnut">🍩 Grafico a Ciambella</option>
+                                </select>
+                                <select id="chartMetric" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
+                                    <option value="importoRaccolta">💰 Importo Raccolta</option>
+                                    <option value="importoSpesa">💸 Importo Spesa</option>
+                                    <option value="percentualeRaccolta">📈 Percentuale Raccolta</option>
+                                    <option value="percentualeSpesa">📉 Percentuale Spesa</option>
+                                </select>
+                                <select id="chartGroupBy" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
+                                    <option value="concessionarioNome">Raggruppa per Concessionario</option>
+                                    <option value="ragioneSociale">Raggruppa per Ragione Sociale</option>
+                                    <option value="concessionarioProprietà">Raggruppa per Proprietà</option>
+                                    <option value="gameNameComplete">Raggruppa per Gioco</option>
+                                    <option value="comparto">🆕 Raggruppa per Comparto</option>
+                                    <option value="tipoGiocoName">🆕 Raggruppa per Tipo Gioco Ippico</option>
+                                    <option value="canale">Raggruppa per Canale</option>
+                                    <option value="quarterYear">Raggruppa per Trimestre</option>
+                                    <option value="monthYear">Raggruppa per Mese</option>
+                                </select>
+                            </div>
+                            <div class="relative" style="height: calc(100% - 120px);">
+                                <canvas id="mainChart" style="max-height: 100%;"></canvas>
+                            </div>
+                            <button onclick="downloadChart()" 
+                                    class="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                                📥 Scarica Grafico
+                            </button>
+                        </div>
+                    </div>
 
-        <!-- Analytics Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" id="analyticsSection" style="display: none;">
-            <!-- Chart Container -->
-            <div class="glass-effect rounded-lg p-6">
-                <h3 class="text-lg font-semibold text-white mb-4">Grafici</h3>
-                <div class="mb-4 grid grid-cols-2 gap-4">
-                    <select id="chartType" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
-                        <option value="bar">📊 Grafico a Barre</option>
-                        <option value="line">📈 Grafico a Linee</option>
-                        <option value="pie">🥧 Grafico a Torta</option>
-                        <option value="doughnut">🍩 Grafico a Ciambella</option>
-                    </select>
-                    <select id="chartMetric" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
-                        <option value="importoRaccolta">💰 Importo Raccolta</option>
-                        <option value="importoSpesa">💸 Importo Spesa</option>
-                        <option value="percentualeRaccolta">📈 Percentuale Raccolta</option>
-                        <option value="percentualeSpesa">📉 Percentuale Spesa</option>
-                    </select>
+                    <!-- Summary Stats (in basso) -->
+                    <div class="stats-container">
+                        <div class="glass-effect rounded-lg p-6 h-full">
+                            <h3 class="text-lg font-semibold text-white mb-4">📋 Statistiche Riassuntive</h3>
+                            <div id="summaryStats" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 h-full overflow-y-auto">
+                                <!-- Stats will be populated here -->
+                            </div>
+                            <div id="negativeValuesAlert" class="mt-4 p-3 bg-yellow-500 bg-opacity-20 rounded-lg" style="display: none;">
+                                <h4 class="text-yellow-200 font-medium">⚠️ Valori Negativi Rilevati</h4>
+                                <div id="negativeValuesList" class="text-yellow-100 text-sm mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <select id="chartGroupBy" class="w-full p-2 border border-gray-300 rounded-lg bg-white">
-                        <option value="concessionarioNome">Raggruppa per Concessionario</option>
-                        <option value="ragioneSociale">Raggruppa per Ragione Sociale</option>
-                        <option value="concessionarioProprietà">Raggruppa per Proprietà</option>
-                        <option value="gameNameComplete">Raggruppa per Gioco</option>
-                        <option value="comparto">🆕 Raggruppa per Comparto</option>
-                        <option value="tipoGiocoName">🆕 Raggruppa per Tipo Gioco Ippico</option>
-                        <option value="canale">Raggruppa per Canale</option>
-                        <option value="quarterYear">Raggruppa per Trimestre</option>
-                        <option value="monthYear">Raggruppa per Mese</option>
-                    </select>
+
+                <!-- Messaggio quando non ci sono dati -->
+                <div id="noChartsMessage" class="text-center text-gray-600 mt-8">
+                    <div class="text-6xl mb-4">📈</div>
+                    <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
+                    <p>Carica dei file Excel e applica i filtri per visualizzare grafici e statistiche.</p>
                 </div>
-                <canvas id="mainChart" width="400" height="300"></canvas>
-                <button onclick="downloadChart()" 
-                        class="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
-                    📥 Scarica Grafico
-                </button>
             </div>
 
-            <!-- Summary Stats -->
-            <div class="glass-effect rounded-lg p-6">
-                <h3 class="text-lg font-semibold text-white mb-4">Statistiche Riassuntive</h3>
-                <div id="summaryStats" class="space-y-4">
-                    <!-- Stats will be populated here -->
+            <!-- 🆕 TAB 4: TABELLE -->
+            <div id="tab-tabelle" class="tab-content">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">📋 Tabelle Dati</h2>
+                
+                <div id="tableSection" style="display: none;">
+                    <div class="glass-effect rounded-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-white">📊 Tabella Dati Filtrati</h3>
+                            <div class="space-x-2">
+                                <button onclick="downloadTable('csv')" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                    📊 Scarica CSV
+                                </button>
+                                <button onclick="downloadTable('excel')" 
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                    📈 Scarica Excel
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="dataTable" class="min-w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
+                                <thead id="tableHead" class="bg-gray-50">
+                                    <!-- Headers will be populated here -->
+                                </thead>
+                                <tbody id="tableBody">
+                                    <!-- Data will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-                <div id="negativeValuesAlert" class="mt-4 p-3 bg-yellow-500 bg-opacity-20 rounded-lg" style="display: none;">
-                    <h4 class="text-yellow-200 font-medium">⚠️ Valori Negativi Rilevati</h4>
-                    <div id="negativeValuesList" class="text-yellow-100 text-sm mt-2"></div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Table Section -->
-        <div class="glass-effect rounded-lg p-6" id="tableSection" style="display: none;">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-white">Tabella Dati</h3>
-                <div class="space-x-2">
-                    <button onclick="downloadTable('csv')" 
-                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
-                        📊 Scarica CSV
-                    </button>
-                    <button onclick="downloadTable('excel')" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                        📈 Scarica Excel
-                    </button>
+                <!-- Messaggio quando non ci sono dati -->
+                <div id="noTableMessage" class="text-center text-gray-600 mt-8">
+                    <div class="text-6xl mb-4">📋</div>
+                    <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
+                    <p>Carica dei file Excel e applica i filtri per visualizzare la tabella dati.</p>
                 </div>
-            </div>
-            <div class="table-container">
-                <table id="dataTable" class="min-w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
-                    <thead id="tableHead" class="bg-gray-50">
-                        <!-- Headers will be populated here -->
-                    </thead>
-                    <tbody id="tableBody">
-                        <!-- Data will be populated here -->
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
 
     <script src="app.js"></script>
+    <script>
+        // 🆕 Sistema di navigazione tra i tab
+        function switchTab(tabName) {
+            // Rimuovi classe active da tutti i tab
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Aggiungi classe active al tab selezionato
+            event.target.closest('.nav-tab').classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Aggiorna indicatore sezione
+            const indicator = document.getElementById('sectionIndicator');
+            const sectionNames = {
+                'gestione': '⚙️ Gestione',
+                'filtri': '🎛️ Filtri',
+                'grafici': '📊 Grafici',
+                'tabelle': '📋 Tabelle'
+            };
+            indicator.textContent = sectionNames[tabName];
+            
+            // Gestione visibilità contenuti
+            updateSectionVisibility(tabName);
+            
+            // Se stiamo andando sui grafici, ridimensiona il grafico
+            if (tabName === 'grafici' && currentChart) {
+                setTimeout(() => {
+                    currentChart.resize();
+                }, 100);
+            }
+        }
+        
+        function updateSectionVisibility(activeTab) {
+            const hasData = allData && allData.length > 0;
+            
+            // Gestione sezione filtri
+            const filtersSection = document.getElementById('filtersSection');
+            const noDataMessage = document.getElementById('noDataMessage');
+            
+            if (activeTab === 'filtri') {
+                if (hasData) {
+                    filtersSection.style.display = 'block';
+                    noDataMessage.style.display = 'none';
+                } else {
+                    filtersSection.style.display = 'none';
+                    noDataMessage.style.display = 'block';
+                }
+            }
+            
+            // Gestione sezione grafici
+            const analyticsSection = document.getElementById('analyticsSection');
+            const noChartsMessage = document.getElementById('noChartsMessage');
+            
+            if (activeTab === 'grafici') {
+                if (hasData && filteredData && filteredData.length > 0) {
+                    analyticsSection.style.display = 'flex';
+                    noChartsMessage.style.display = 'none';
+                } else {
+                    analyticsSection.style.display = 'none';
+                    noChartsMessage.style.display = 'block';
+                }
+            }
+            
+            // Gestione sezione tabelle
+            const tableSection = document.getElementById('tableSection');
+            const noTableMessage = document.getElementById('noTableMessage');
+            
+            if (activeTab === 'tabelle') {
+                if (hasData && filteredData && filteredData.length > 0) {
+                    tableSection.style.display = 'block';
+                    noTableMessage.style.display = 'none';
+                } else {
+                    tableSection.style.display = 'none';
+                    noTableMessage.style.display = 'block';
+                }
+            }
+        }
+        
+        // Aggiorna la funzione updateDisplays per gestire la visibilità
+        function updateDisplaysWithNav() {
+            updateChart();
+            updateTable();
+            updateSummaryStats();
+            
+            // Aggiorna visibilità basata sul tab attivo
+            const activeTab = document.querySelector('.tab-content.active').id.replace('tab-', '');
+            updateSectionVisibility(activeTab);
+        }
+        
+        // Override della funzione updateDisplays originale
+        const originalUpdateDisplays = updateDisplays;
+        updateDisplays = updateDisplaysWithNav;
+    </script>
 </body>
 </html>
