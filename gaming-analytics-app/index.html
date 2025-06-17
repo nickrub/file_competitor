@@ -3,41 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gaming Analytics Dashboard</title>
+    <title>Gaming Analytics Dashboard v3.0 - Performance Optimized</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <style>
+        /* ===== BASE STYLES ===== */
         .glass-effect {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        .table-container {
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .sortable {
-            cursor: pointer;
-            user-select: none;
-        }
-        .sortable:hover {
-            background-color: #f3f4f6;
-        }
-        .sort-arrow {
-            display: inline-block;
-            margin-left: 5px;
-            transition: transform 0.2s;
+        
+        /* ===== PERFORMANCE STYLES ===== */
+        
+        /* Progress Overlay */
+        .progress-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
-        /* 🆕 Stili per il sistema di navigazione */
+        .progress-container {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+            width: 500px;
+            max-width: 90vw;
+            border: 2px solid #3b82f6;
+        }
+        
+        .progress-text {
+            text-align: center;
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 16px 0;
+            border: 1px solid #d1d5db;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8, #1e40af);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+            position: relative;
+            background-size: 200% 100%;
+            animation: progressShimmer 2s infinite;
+        }
+        
+        @keyframes progressShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .progress-details {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        
+        .chunk-progress {
+            text-align: center;
+            color: #3b82f6;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 12px;
+        }
+        
+        /* Memory Indicator */
+        .memory-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .memory-indicator.warning {
+            background: linear-gradient(45deg, #f59e0b, #d97706);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+        }
+        
+        .memory-indicator.danger {
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* Performance Badges */
+        .performance-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .chunked-indicator {
+            background: linear-gradient(45deg, #8b5cf6, #7c3aed);
+        }
+        
+        .optimized-indicator {
+            background: linear-gradient(45deg, #f59e0b, #d97706);
+        }
+        
+        .fast-filter-indicator {
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+        }
+        
+        .virtual-indicator {
+            background: linear-gradient(45deg, #06b6d4, #0891b2);
+        }
+        
+        /* Pagination */
+        .pagination-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .pagination-button {
+            padding: 10px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .pagination-button:hover:not(:disabled) {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+        }
+        
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination-current {
+            background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+            color: white;
+            border-color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        /* Navigation System */
         .nav-container {
             background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 0;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
             overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
         
         .nav-tabs {
@@ -48,7 +207,7 @@
         
         .nav-tab {
             flex: 1;
-            padding: 16px 24px;
+            padding: 20px 24px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -65,18 +224,29 @@
         .nav-tab:hover {
             color: white;
             background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
         }
         
         .nav-tab.active {
             color: white;
             background: rgba(255, 255, 255, 0.2);
-            box-shadow: inset 0 -3px 0 0 #fbbf24;
+            box-shadow: inset 0 -4px 0 0 #fbbf24;
+        }
+        
+        .nav-tab.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
         }
         
         .nav-tab-icon {
             display: block;
-            font-size: 24px;
-            margin-bottom: 4px;
+            font-size: 28px;
+            margin-bottom: 6px;
         }
         
         .nav-tab-text {
@@ -86,15 +256,27 @@
         
         .tab-content {
             display: none;
-            padding: 24px;
-            min-height: 400px;
+            padding: 32px;
+            min-height: 500px;
         }
         
         .tab-content.active {
             display: block;
+            animation: fadeInUp 0.4s ease-out;
         }
         
-        /* Stili migliorati per i filtri */
+        @keyframes fadeInUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        
+        /* Enhanced Filters */
         .filter-container {
             background: transparent;
             border-radius: 0;
@@ -110,29 +292,30 @@
         
         .multi-select-button {
             width: 100%;
-            padding: 12px 16px;
+            padding: 14px 18px;
             text-align: left;
             background: white;
             border: 2px solid #e5e7eb;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
             font-size: 14px;
-            min-height: 48px;
+            min-height: 52px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         
         .multi-select-button:hover {
             border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateY(-1px);
         }
         
         .multi-select-button:focus {
             outline: none;
             border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
         
-        /* 🆕 Dropdown migliorato con layout a griglia */
         .multi-select-dropdown {
             position: absolute;
             top: 100%;
@@ -140,26 +323,26 @@
             right: 0;
             background: white;
             border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            margin-top: 4px;
-            max-height: 400px;
+            border-radius: 10px;
+            margin-top: 6px;
+            max-height: 450px;
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
             display: none;
-            min-width: 300px;
+            min-width: 350px;
         }
         
         .multi-select-dropdown.show {
             display: block;
         }
         
-        /* Opzione "Seleziona tutto" in evidenza */
         .select-all-option {
             background: #f8fafc;
             border-bottom: 2px solid #e2e8f0;
             font-weight: bold;
             color: #1e40af;
+            padding: 12px 16px;
         }
         
         .select-all-option:hover {
@@ -168,33 +351,29 @@
         
         .filter-separator {
             border-bottom: 1px solid #e5e7eb;
-            margin: 8px 0;
+            margin: 0;
         }
         
-        /* Grid per le opzioni */
         .filter-options-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 4px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2px;
             padding: 8px;
         }
         
         .multi-select-option {
-            padding: 8px 12px;
+            padding: 10px 14px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 8px;
-            border-radius: 4px;
+            gap: 10px;
+            border-radius: 6px;
             font-size: 13px;
+            min-height: 36px;
         }
         
-        .grid-option {
-            min-height: 32px;
-        }
-        
-        .multi-select-option:hover {
+        .grid-option:hover {
             background-color: #f3f4f6;
         }
         
@@ -204,54 +383,194 @@
         }
         
         .multi-select-checkbox {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             accent-color: #3b82f6;
             flex-shrink: 0;
         }
         
         .option-text {
             word-break: break-word;
-            line-height: 1.3;
+            line-height: 1.4;
         }
         
-        .filter-badge {
-            display: inline-block;
-            background: #3b82f6;
-            color: white;
-            padding: 2px 8px;
+        /* Table Optimizations */
+        .table-container-optimized {
+            max-height: 650px;
+            overflow-y: auto;
+            position: relative;
             border-radius: 12px;
-            font-size: 12px;
-            margin: 2px;
+            border: 1px solid #e5e7eb;
         }
         
-        .negative-value {
-            color: #dc2626;
+        .table-optimized {
+            table-layout: fixed;
+            width: 100%;
+        }
+        
+        .table-optimized th,
+        .table-optimized td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 12px 16px;
+        }
+        
+        .table-optimized th {
+            background: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .table-optimized tbody tr:hover {
+            background: #f8fafc;
+        }
+        
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        
+        .sortable:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .sort-arrow {
+            display: inline-block;
+            margin-left: 8px;
+            transition: all 0.3s;
             font-weight: bold;
         }
         
+        /* Performance Metrics */
+        .perf-metrics {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .perf-metric {
+            background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .perf-metric-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .perf-metric-value {
+            color: #0f172a;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+        
+        /* Section Containers */
+        .section-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        /* File Size Warning */
+        .file-size-warning {
+            background: linear-gradient(145deg, #fef3c7, #fde68a);
+            border: 2px solid #f59e0b;
+            color: #92400e;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-weight: 500;
+        }
+        
+        /* Optimize Button */
+        .optimize-button {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .optimize-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+        
+        .optimize-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.6s;
+        }
+        
+        .optimize-button:hover::before {
+            left: 100%;
+        }
+        
+        /* Data Status Indicators */
         .data-persistence-indicator {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #10b981;
+            background: linear-gradient(45deg, #10b981, #059669);
             color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
+            padding: 10px 18px;
+            border-radius: 12px;
             font-size: 12px;
+            font-weight: 600;
             z-index: 1000;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: all 0.4s ease;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
         }
         
         .data-persistence-indicator.show {
             opacity: 1;
         }
-
+        
+        .section-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(59, 130, 246, 0.95);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            z-index: 999;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Badge Styles */
         .channel-badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
+            padding: 3px 10px;
+            border-radius: 15px;
             font-size: 11px;
             font-weight: bold;
         }
@@ -259,230 +578,249 @@
         .channel-fisico {
             background: #dbeafe;
             color: #1d4ed8;
+            border: 1px solid #93c5fd;
         }
         
         .channel-online {
             background: #dcfce7;
             color: #166534;
+            border: 1px solid #86efac;
         }
-
-        /* Stili per anagrafica */
-        .section-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        /* 🆕 Stili per i badge dei tipi di gioco ippico */
+        
         .tipo-gioco-badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 10px;
+            padding: 3px 8px;
+            border-radius: 12px;
             font-size: 10px;
             font-weight: bold;
             text-align: center;
-            min-width: 50px;
+            min-width: 60px;
         }
-
+        
         .tipo-qf {
-            background: #e0f2fe;
+            background: linear-gradient(145deg, #e0f2fe, #b3e5fc);
             color: #0277bd;
-            border: 1px solid #b3e5fc;
+            border: 1px solid #81d4fa;
         }
-
+        
         .tipo-totalizzatore {
-            background: #f3e5f5;
+            background: linear-gradient(145deg, #f3e5f5, #e1bee7);
             color: #7b1fa2;
-            border: 1px solid #e1bee7;
+            border: 1px solid #ce93d8;
         }
-
+        
         .tipo-multipla {
-            background: #fff3e0;
+            background: linear-gradient(145deg, #fff3e0, #ffcc02);
             color: #ef6c00;
-            border: 1px solid #ffcc02;
+            border: 1px solid #ffa726;
         }
-
-        /* 🆕 Stili per badge comparti */
+        
         .comparto-badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 8px;
+            padding: 3px 8px;
+            border-radius: 10px;
             font-size: 10px;
             font-weight: bold;
-            background: #e0f7fa;
+            background: linear-gradient(145deg, #e0f7fa, #b2dfdb);
             color: #00695c;
-            border: 1px solid #b2dfdb;
+            border: 1px solid #80cbc4;
         }
-
-        /* Responsive per il nuovo layout filtri */
-        @media (min-width: 768px) {
-            .filters-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .filters-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (min-width: 1280px) {
-            .filters-grid {
-                grid-template-columns: repeat(5, 1fr);
-            }
-        }
-
-        /* Stile per evidenziare i dati ippici */
-        .hippo-row {
-            background-color: #fafafa;
-            border-left: 3px solid #9c27b0;
-        }
-
-        .hippo-indicator {
-            background: linear-gradient(45deg, #9c27b0, #673ab7);
-            color: white;
-            padding: 1px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        /* 🆕 Stile per evidenziare i dati storici */
-        .historical-row {
-            background-color: #f0f9ff;
-            border-left: 3px solid #0284c7;
-        }
-
-        .historical-indicator {
-            background: linear-gradient(45deg, #0284c7, #0369a1);
-            color: white;
-            padding: 1px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        /* Badge per gruppo */
+        
         .gruppo-badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 8px;
+            padding: 3px 8px;
+            border-radius: 10px;
             font-size: 10px;
             font-weight: bold;
-            background: #f0fdf4;
+            background: linear-gradient(145deg, #f0fdf4, #bbf7d0);
             color: #166534;
-            border: 1px solid #bbf7d0;
+            border: 1px solid #86efac;
         }
-
-        /* 🆕 Layout migliorato per filtri su più righe */
-        .filters-section {
-            display: grid;
-            gap: 20px;
+        
+        /* Row Styling */
+        .hippo-row {
+            background: linear-gradient(145deg, #fafafa, #f5f5f5);
+            border-left: 4px solid #9c27b0;
         }
-
-        .filters-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
-            align-items: start;
+        
+        .historical-row {
+            background: linear-gradient(145deg, #f0f9ff, #e0f2fe);
+            border-left: 4px solid #0284c7;
         }
-
-        /* 🆕 Layout specifico per la sezione grafici */
+        
+        .negative-value {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        
+        /* Charts Section */
         .charts-section {
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 28px;
             height: calc(100vh - 200px);
         }
         
         .chart-container {
             flex: 2;
-            min-height: 500px;
+            min-height: 550px;
         }
         
         .stats-container {
             flex: 1;
-            min-height: 200px;
+            min-height: 220px;
         }
         
-        /* Responsive per sezione grafici */
+        /* Responsive */
         @media (max-width: 1024px) {
             .charts-section {
                 height: auto;
             }
             
             .chart-container {
-                min-height: 400px;
+                min-height: 450px;
+            }
+            
+            .nav-tab {
+                padding: 16px 12px;
+            }
+            
+            .nav-tab-icon {
+                font-size: 24px;
+            }
+            
+            .section-container {
+                padding: 20px;
             }
         }
-
-        /* Stili per le sezioni mappature */
-        .mapping-section {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
+        
+        @media (max-width: 768px) {
+            .pagination-button {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            .progress-container {
+                width: 350px;
+                padding: 24px;
+            }
+            
+            .nav-tab-text {
+                font-size: 12px;
+            }
+            
+            .perf-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
-
-        /* 🆕 Indicatore sezione attiva */
-        .section-indicator {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: rgba(59, 130, 246, 0.9);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            z-index: 999;
-            transition: all 0.3s ease;
+        
+        /* Scroll Enhancements */
+        .table-container-optimized::-webkit-scrollbar,
+        .multi-select-dropdown::-webkit-scrollbar {
+            width: 8px;
         }
-
-        /* Animazioni per transizioni */
-        .tab-content {
-            animation: fadeIn 0.3s ease-in-out;
+        
+        .table-container-optimized::-webkit-scrollbar-track,
+        .multi-select-dropdown::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        
+        .table-container-optimized::-webkit-scrollbar-thumb,
+        .multi-select-dropdown::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .table-container-optimized::-webkit-scrollbar-thumb:hover,
+        .multi-select-dropdown::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
-    <!-- Indicatore persistenza dati -->
+    <!-- Performance Indicators -->
     <div id="persistenceIndicator" class="data-persistence-indicator">
         📊 Dati salvati automaticamente
     </div>
 
-    <!-- Indicatore sezione attiva -->
+    <div id="memoryIndicator" class="memory-indicator" style="display: none;">
+        💾 <span id="memoryUsage">0MB</span>
+    </div>
+
     <div id="sectionIndicator" class="section-indicator">
         📊 Gestione
     </div>
 
     <div class="container mx-auto p-6">
-        <!-- Header -->
-        <div class="glass-effect rounded-lg p-6 mb-6">
-            <h1 class="text-3xl font-bold text-white mb-2">Gaming Analytics Dashboard</h1>
-            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi con sistema di navigazione avanzato</p>
-            <div id="dataStatus" class="mt-2 text-sm text-blue-200"></div>
+        <!-- Header with Performance Metrics -->
+        <div class="glass-effect rounded-lg p-8 mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold text-white mb-3">
+                        Gaming Analytics Dashboard v3.0
+                        <span class="performance-badge">⚡ ULTRA-OTTIMIZZATO</span>
+                        <span class="performance-badge chunked-indicator">🔄 CHUNKED</span>
+                        <span class="performance-badge virtual-indicator">📋 VIRTUAL</span>
+                    </h1>
+                    <p class="text-gray-300 text-lg">Sistema avanzato per analisi GAD - Performance estrema per file enormi (100k+ record)</p>
+                    <div id="dataStatus" class="mt-3 text-sm text-blue-200 font-medium"></div>
+                    
+                    <!-- Performance Metrics Dashboard -->
+                    <div class="perf-metrics">
+                        <div class="perf-metric">
+                            <span class="perf-metric-label">📊 Record totali:</span>
+                            <span class="perf-metric-value" id="totalRecordsMetric">0</span>
+                        </div>
+                        <div class="perf-metric">
+                            <span class="perf-metric-label">🎛️ Record filtrati:</span>
+                            <span class="perf-metric-value" id="filteredRecordsMetric">0</span>
+                        </div>
+                        <div class="perf-metric">
+                            <span class="perf-metric-label">⚡ Ultimo filtro:</span>
+                            <span class="perf-metric-value" id="lastFilterTime">-</span>
+                        </div>
+                        <div class="perf-metric">
+                            <span class="perf-metric-label">🔍 Indici attivi:</span>
+                            <span class="perf-metric-value" id="indicesCount">0</span>
+                        </div>
+                        <div class="perf-metric">
+                            <span class="perf-metric-label">📄 Record/pagina:</span>
+                            <span class="perf-metric-value" id="maxRecordsDisplay">50</span>
+                        </div>
+                        <div class="perf-metric">
+                            <span class="perf-metric-label">🔄 Chunk size:</span>
+                            <span class="perf-metric-value" id="chunkSizeDisplay">1000</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Controls -->
+                <div class="text-right">
+                    <button onclick="optimizePerformance()" class="optimize-button mb-3">
+                        🚀 Ottimizza Sistema
+                    </button>
+                    <div class="text-xs text-gray-300 space-y-1">
+                        <div>⚡ Modalità: <span class="text-yellow-300 font-semibold">Ultra-Performance</span></div>
+                        <div>🛡️ Anti-crash: <span class="text-green-300 font-semibold">Attivo</span></div>
+                        <div>💾 Auto-save: <span class="text-blue-300 font-semibold">Abilitato</span></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- 🆕 Sistema di Navigazione -->
-        <div class="nav-container mb-6">
+        <!-- Navigation System -->
+        <div class="nav-container mb-8">
             <!-- Tab Navigation -->
             <div class="nav-tabs">
                 <div class="nav-tab active" onclick="switchTab('gestione')">
                     <span class="nav-tab-icon">⚙️</span>
-                    <span class="nav-tab-text">Gestione</span>
+                    <span class="nav-tab-text">Gestione Sistema</span>
                 </div>
                 <div class="nav-tab" onclick="switchTab('filtri')">
                     <span class="nav-tab-icon">🎛️</span>
-                    <span class="nav-tab-text">Filtri</span>
+                    <span class="nav-tab-text">Filtri Ultra-Veloci</span>
+                    <span class="fast-filter-indicator">⚡ <1s</span>
                 </div>
                 <div class="nav-tab" onclick="switchTab('grafici')">
                     <span class="nav-tab-icon">📊</span>
@@ -490,139 +828,247 @@
                 </div>
                 <div class="nav-tab" onclick="switchTab('tabelle')">
                     <span class="nav-tab-icon">📋</span>
-                    <span class="nav-tab-text">Tabelle</span>
+                    <span class="nav-tab-text">Tabelle Ottimizzate</span>
+                    <span class="virtual-indicator">VIRTUAL</span>
                 </div>
             </div>
 
-            <!-- 🆕 TAB 1: GESTIONE -->
+            <!-- TAB 1: GESTIONE SISTEMA -->
             <div id="tab-gestione" class="tab-content active">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-6">⚙️ Gestione Sistema</h2>
+                <h2 class="text-3xl font-semibold text-gray-800 mb-8">⚙️ Gestione Sistema Avanzata</h2>
                 
                 <!-- Upload Section -->
                 <div class="section-container">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📁 Carica File Excel</h3>
-                    <div class="flex items-center space-x-4 mb-4 flex-wrap gap-2">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">
+                        📁 Caricamento File Ultra-Ottimizzato
+                        <span class="performance-badge chunked-indicator">🔄 CHUNKED PROCESSING</span>
+                        <span class="performance-badge">⚡ ANTI-CRASH</span>
+                    </h3>
+                    
+                    <!-- File Size Warning -->
+                    <div id="fileSizeWarning" class="file-size-warning" style="display: none;">
+                        ⚠️ <strong>File di grandi dimensioni rilevato!</strong><br>
+                        Il sistema utilizzerà processing chunked ultra-ottimizzato per garantire stabilità.<br>
+                        Tempo stimato di elaborazione: <span id="estimatedTime">-</span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4 mb-6 flex-wrap gap-3">
                         <input type="file" id="fileInput" accept=".xlsx,.xls" multiple 
-                               class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
+                               class="block w-full text-sm text-gray-700 file:mr-4 file:py-3 file:px-6 
                                       file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                                      file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                      file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100
+                                      border-2 border-dashed border-gray-300 rounded-lg p-4"
+                               onchange="checkFileSize()">
                         <button onclick="processFiles()" 
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg 
-                                       transition-colors duration-200 whitespace-nowrap">
-                            Elabora File
+                                class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+                                       text-white px-8 py-3 rounded-lg transition-all duration-200 font-semibold
+                                       shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                            🚀 Elabora con Performance v3.0
                         </button>
                         <button onclick="clearStoredData()" 
-                                class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg 
-                                       transition-colors duration-200 whitespace-nowrap">
-                            Cancella Dati
+                                class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 
+                                       text-white px-8 py-3 rounded-lg transition-all duration-200 font-semibold
+                                       shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                            🗑️ Cancella Tutti i Dati
+                        </button>
+                        <button onclick="cleanupOldData()" 
+                                class="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 
+                                       text-white px-6 py-3 rounded-lg transition-all duration-200 font-semibold
+                                       shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                            🧹 Pulizia Memoria
                         </button>
                     </div>
-                    <div class="text-xs text-gray-600 mb-4">
-                        💡 Supporta 4 formati Excel: <br>
-                        • <strong>Formato Standard</strong>: Statistiche GAD normali<br>
-                        • <strong>Formato Nuovo</strong>: Con "Periodo da..." nella riga 2<br>
-                        • <strong>🆕 Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA<br>
-                        • <strong>🆕 Formato Storico</strong>: DB-MARKET SHARE con dati 2018-2025 (99k+ record)
+                    
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-3">💡 Formati Supportati con Ottimizzazioni v3.0</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div class="bg-white p-4 rounded-lg border">
+                                <strong class="text-blue-700">📊 Formato Standard GAD</strong><br>
+                                <span class="text-gray-600">Statistiche normali con chunked processing</span>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border">
+                                <strong class="text-green-700">📈 Formato Nuovo</strong><br>
+                                <span class="text-gray-600">Con "Periodo da..." - elaborazione veloce</span>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border">
+                                <strong class="text-purple-700">🎯 Formato Ippico</strong><br>
+                                <span class="text-gray-600">QF/TOTALIZZATORE/MULTIPLA con badge distintivi</span>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border">
+                                <strong class="text-red-700">🏛️ Formato Storico DB-MARKET SHARE</strong><br>
+                                <span class="text-gray-600"><strong>Ultra-ottimizzato per 99k+ record</strong></span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="uploadStatus" class="text-sm text-gray-600"></div>
+                    
+                    <div id="uploadStatus" class="text-sm text-gray-700 mt-4 font-medium"></div>
                 </div>
 
-                <!-- Gestione Mappature -->
+                <!-- Performance Settings -->
                 <div class="section-container">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">🎯 Gestione Mappature</h3>
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">🎯 Configurazione Performance Avanzata</h3>
                     
-                    <!-- Mappatura Nomi Giochi -->
-                    <div class="mapping-section">
-                        <h4 class="text-lg font-medium text-gray-700 mb-3">📝 Mappatura Nomi Giochi</h4>
-                        <div class="flex items-center space-x-4 mb-3">
-                            <input type="file" id="nomiGiochiFileInput" accept=".xlsx,.xls" 
-                                   class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
-                                          file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                                          file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
-                            <button onclick="loadNomiGiochiFromExcel()" 
-                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg 
-                                           transition-colors duration-200 whitespace-nowrap">
-                                Carica Nomi
-                            </button>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border">
+                            <label class="block text-sm font-bold text-blue-800 mb-3">
+                                🔄 Chunk Size (record per elaborazione)
+                            </label>
+                            <select id="chunkSizeSelect" onchange="updateChunkSize()" 
+                                    class="w-full p-3 border-2 border-blue-200 rounded-lg bg-white font-medium">
+                                <option value="500">500 (Ultra-Safe)</option>
+                                <option value="1000" selected>1000 (Consigliato)</option>
+                                <option value="2000">2000 (Veloce)</option>
+                                <option value="5000">5000 (Massima Velocità)</option>
+                            </select>
+                            <p class="text-xs text-blue-600 mt-2">Per file molto grandi, usa valori più bassi</p>
                         </div>
-                        <div class="text-xs text-gray-500">
-                            File Excel con struttura: <strong>Nome gioco da file | Nome gioco da mostrare</strong>
+                        
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border">
+                            <label class="block text-sm font-bold text-green-800 mb-3">
+                                📄 Record per Pagina Tabella
+                            </label>
+                            <select id="pageSizeSelect" onchange="updatePageSize()" 
+                                    class="w-full p-3 border-2 border-green-200 rounded-lg bg-white font-medium">
+                                <option value="25">25 (Ultrabook/Tablet)</option>
+                                <option value="50" selected>50 (Consigliato)</option>
+                                <option value="100">100 (Desktop Potente)</option>
+                                <option value="200">200 (Workstation)</option>
+                            </select>
+                            <p class="text-xs text-green-600 mt-2">Più alto = meno paginazione, più memoria</p>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border">
+                            <label class="block text-sm font-bold text-purple-800 mb-3">
+                                ⏱️ Debounce Filtri (millisecondi)
+                            </label>
+                            <select id="debounceSelect" onchange="updateDebounce()" 
+                                    class="w-full p-3 border-2 border-purple-200 rounded-lg bg-white font-medium">
+                                <option value="100">100ms (Immediato)</option>
+                                <option value="300" selected>300ms (Consigliato)</option>
+                                <option value="500">500ms (Conservativo)</option>
+                                <option value="1000">1000ms (Ultra-Safe)</option>
+                            </select>
+                            <p class="text-xs text-purple-600 mt-2">Più alto = meno lag, risposta meno immediata</p>
                         </div>
                     </div>
+                    
+                    <div class="mt-8 flex flex-wrap gap-4">
+                        <button onclick="benchmarkPerformance()" 
+                                class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 
+                                       text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                       transform hover:-translate-y-1 transition-all duration-200">
+                            🏃‍♂️ Test Performance Sistema
+                        </button>
+                        <button onclick="resetToDefaults()" 
+                                class="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 
+                                       text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                       transform hover:-translate-y-1 transition-all duration-200">
+                            🔄 Reset Impostazioni Default
+                        </button>
+                    </div>
+                </div>
 
-                    <!-- Mappatura Comparti -->
-                    <div class="mapping-section">
-                        <h4 class="text-lg font-medium text-gray-700 mb-3">🏢 Mappatura Comparti</h4>
-                        <div class="flex items-center space-x-4 mb-3">
-                            <input type="file" id="compartiFileInput" accept=".xlsx,.xls" 
-                                   class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
-                                          file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                                          file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                            <button onclick="loadCompartiFromExcel()" 
-                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg 
-                                           transition-colors duration-200 whitespace-nowrap">
-                                Carica Comparti
-                            </button>
+                <!-- Mappature -->
+                <div class="section-container">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">🎯 Gestione Mappature Dati</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Mappatura Nomi Giochi -->
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border-2 border-green-200">
+                            <h4 class="text-lg font-bold text-green-800 mb-4">📝 Mappatura Nomi Giochi</h4>
+                            <div class="space-y-4">
+                                <input type="file" id="nomiGiochiFileInput" accept=".xlsx,.xls" 
+                                       class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
+                                              file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                                              file:bg-green-50 file:text-green-700 hover:file:bg-green-100
+                                              border border-green-300 rounded-lg p-2">
+                                <button onclick="loadNomiGiochiFromExcel()" 
+                                        class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg 
+                                               transition-colors duration-200 font-semibold">
+                                    📝 Carica Mappatura Nomi
+                                </button>
+                                <p class="text-xs text-green-700">
+                                    <strong>Struttura file:</strong> Nome originale | Nome da mostrare
+                                </p>
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-500">
-                            File Excel con struttura: <strong>Nome gioco | Comparto</strong>
+
+                        <!-- Mappatura Comparti -->
+                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-lg border-2 border-indigo-200">
+                            <h4 class="text-lg font-bold text-indigo-800 mb-4">🏢 Mappatura Comparti</h4>
+                            <div class="space-y-4">
+                                <input type="file" id="compartiFileInput" accept=".xlsx,.xls" 
+                                       class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
+                                              file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                                              file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100
+                                              border border-indigo-300 rounded-lg p-2">
+                                <button onclick="loadCompartiFromExcel()" 
+                                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg 
+                                               transition-colors duration-200 font-semibold">
+                                    🏢 Carica Mappatura Comparti
+                                </button>
+                                <p class="text-xs text-indigo-700">
+                                    <strong>Struttura file:</strong> Nome gioco | Comparto
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Anagrafica Concessioni -->
                 <div class="section-container">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📖 Anagrafica Concessioni</h3>
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">📖 Anagrafica Concessioni</h3>
                     
                     <!-- Caricamento anagrafica -->
-                    <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                        <h4 class="text-lg font-medium text-gray-700 mb-3">Carica Anagrafica da Excel</h4>
-                        <div class="flex items-center space-x-4 mb-3">
+                    <div class="mb-8 p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-2 border-blue-200">
+                        <h4 class="text-lg font-bold text-blue-800 mb-4">📂 Carica Anagrafica da Excel</h4>
+                        <div class="flex items-center space-x-4 mb-4 flex-wrap gap-3">
                             <input type="file" id="anagraficaFileInput" accept=".xlsx,.xls" 
                                    class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
                                           file:rounded-full file:border-0 file:text-sm file:font-semibold 
-                                          file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                          file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100
+                                          border border-blue-300 rounded-lg p-2">
                             <button onclick="loadAnagraficaFromExcel()" 
-                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg 
-                                           transition-colors duration-200">
-                                Carica Anagrafica
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg 
+                                           transition-colors duration-200 font-semibold whitespace-nowrap">
+                                📂 Carica Anagrafica
                             </button>
                             <button onclick="addNewAnagraficaItem()" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg 
-                                           transition-colors duration-200">
-                                ➕ Aggiungi
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg 
+                                           transition-colors duration-200 font-semibold whitespace-nowrap">
+                                ➕ Aggiungi Nuovo
                             </button>
                             <button onclick="exportAnagrafica()" 
-                                    class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg 
-                                           transition-colors duration-200">
-                                📥 Esporta
+                                    class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg 
+                                           transition-colors duration-200 font-semibold whitespace-nowrap">
+                                📥 Esporta Excel
                             </button>
                         </div>
-                        <div class="text-xs text-gray-500">
-                            Struttura: N. CONC. | CONCESSIONARIO | RAGIONE SOCIALE | CANALE | PROPRIETA'
-                        </div>
+                        <p class="text-sm text-blue-700">
+                            <strong>Struttura richiesta:</strong> N. CONC. | CONCESSIONARIO | RAGIONE SOCIALE | CANALE | PROPRIETA'
+                        </p>
                     </div>
 
                     <!-- Tabella anagrafica -->
-                    <div class="bg-white rounded-lg overflow-hidden">
-                        <div class="px-4 py-3 bg-gray-50 border-b">
-                            <h4 class="text-md font-medium text-gray-700">
-                                Concessioni attive: <span id="anagraficaCount" class="text-blue-600">0</span>
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden border">
+                        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b">
+                            <h4 class="text-lg font-bold text-gray-800">
+                                📋 Concessioni Gestite: <span id="anagraficaCount" class="text-blue-600">0</span>
                             </h4>
                         </div>
-                        <div class="table-container" style="max-height: 400px;">
+                        <div class="table-container" style="max-height: 500px;">
                             <table class="min-w-full">
                                 <thead class="bg-gray-50 sticky top-0">
                                     <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cod. Concessione</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Concessionario</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ragione Sociale</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Canale</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Proprietà</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Azioni</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Codice</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Concessionario</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ragione Sociale</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Canale</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Proprietà</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Azioni</th>
                                     </tr>
                                 </thead>
-                                <tbody id="anagraficaTableBody">
+                                <tbody id="anagraficaTableBody" class="bg-white divide-y divide-gray-200">
                                     <!-- Dati anagrafica saranno popolati qui -->
                                 </tbody>
                             </table>
@@ -631,463 +1077,400 @@
                 </div>
             </div>
 
-            <!-- 🆕 TAB 2: FILTRI -->
+            <!-- TAB 2: FILTRI ULTRA-VELOCI -->
             <div id="tab-filtri" class="tab-content">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-6">🎛️ Filtri Avanzati</h2>
+                <h2 class="text-3xl font-semibold text-gray-800 mb-8">
+                    🎛️ Sistema Filtri Ultra-Ottimizzato
+                    <span class="fast-filter-indicator">⚡ VELOCITÀ ESTREMA</span>
+                    <span class="performance-badge">🔍 INDICI</span>
+                </h2>
                 
                 <div class="filter-container" id="filtersSection" style="display: none;">
-                    <div class="filters-section">
-                        <!-- Prima riga di filtri -->
-                        <div class="filters-row">
-                            <!-- Filtro Giochi -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🎮 Giochi
-                                    <span id="gameCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="gameFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('gameFilter')">
-                                        <span class="selected-text">Seleziona giochi...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filtro Comparto -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🏢 Comparto
-                                    <span id="compartoCount" class="text-orange-600"></span>
-                                </label>
-                                <div class="multi-select" id="compartoFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('compartoFilter')">
-                                        <span class="selected-text">Seleziona comparti...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filtro Anni -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    📅 Anni
-                                    <span id="yearCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="yearFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('yearFilter')">
-                                        <span class="selected-text">Seleziona anni...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filtro Trimestri -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    📊 Trimestri
-                                    <span id="quarterCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="quarterFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('quarterFilter')">
-                                        <span class="selected-text">Seleziona trimestri...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filtro Mesi -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🗓️ Mesi
-                                    <span id="monthCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="monthFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('monthFilter')">
-                                        <span class="selected-text">Seleziona mesi...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
+                    <!-- Prima riga filtri principali -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+                        <!-- Filtro Giochi -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🎮 Giochi <span id="gameCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="gameFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('gameFilter')">
+                                    <span class="selected-text">Seleziona giochi...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Seconda riga di filtri -->
-                        <div class="filters-row">
-                            <!-- Filtro Canale -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🌐 Canale
-                                    <span id="channelCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="channelFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('channelFilter')">
-                                        <span class="selected-text">Seleziona canali...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
+                        <!-- Filtro Comparto -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🏢 Comparto <span id="compartoCount" class="text-orange-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="compartoFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('compartoFilter')">
+                                    <span class="selected-text">Seleziona comparti...</span>
+                                    <span class="float-right text-orange-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Filtro Tipo Gioco Ippico -->
-                            <div id="tipoGiocoFilterDiv" style="display: none;">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🎯 Tipo Gioco
-                                    <span id="tipoGiocoCount" class="text-purple-600"></span>
-                                </label>
-                                <div class="multi-select" id="tipoGiocoFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('tipoGiocoFilter')">
-                                        <span class="selected-text">Seleziona tipi...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
+                        <!-- Filtro Anni -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                📅 Anni <span id="yearCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="yearFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('yearFilter')">
+                                    <span class="selected-text">Seleziona anni...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Filtro Gruppo (solo per dati storici) -->
-                            <div id="gruppoFilterDiv" style="display: none;">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🏛️ Gruppo
-                                    <span id="gruppoCount" class="text-indigo-600"></span>
-                                </label>
-                                <div class="multi-select" id="gruppoFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('gruppoFilter')">
-                                        <span class="selected-text">Seleziona gruppi...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
+                        <!-- Filtro Trimestri -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                📊 Trimestri <span id="quarterCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="quarterFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('quarterFilter')">
+                                    <span class="selected-text">Seleziona trimestri...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Filtro Concessionari -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🏢 Concessionari
-                                    <span id="concessionaryCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="concessionaryFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('concessionaryFilter')">
-                                        <span class="selected-text">Seleziona concessionari...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filtro Proprietà -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    🔑 Proprietà
-                                    <span id="proprietaCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="proprietaFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('proprietaFilter')">
-                                        <span class="selected-text">Seleziona proprietà...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Filtro Ragione Sociale -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    📄 Ragione Sociale
-                                    <span id="ragioneSocialeCount" class="text-blue-600"></span>
-                                </label>
-                                <div class="multi-select" id="ragioneSocialeFilter">
-                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('ragioneSocialeFilter')">
-                                        <span class="selected-text">Seleziona ragioni sociali...</span>
-                                        <span class="float-right">▼</span>
-                                    </button>
-                                    <div class="multi-select-dropdown">
-                                        <div class="multi-select-options"></div>
-                                    </div>
+                        <!-- Filtro Mesi -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🗓️ Mesi <span id="monthCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="monthFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('monthFilter')">
+                                    <span class="selected-text">Seleziona mesi...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Pulsanti azione -->
-                    <div class="mt-6 flex flex-wrap gap-4">
-                        <button onclick="applyFilters()" 
-                                class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg 
-                                       transition-colors duration-200 font-medium">
-                            ✅ Applica Filtri
-                        </button>
-                        <button onclick="resetFilters()" 
-                                class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg 
-                                       transition-colors duration-200 font-medium">
-                            🔄 Reset Filtri
-                        </button>
-                        <button onclick="selectAllFilters()" 
-                                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg 
-                                       transition-colors duration-200 font-medium">
-                            ☑️ Seleziona Tutto
-                        </button>
-                        <button onclick="deselectAllFilters()" 
-                                class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg 
-                                       transition-colors duration-200 font-medium">
-                            ☐ Deseleziona Tutto
-                        </button>
-                        <button onclick="filterByChannel('fisico')" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg 
-                                       transition-colors duration-200 text-sm">
-                            📍 Solo Fisico
-                        </button>
-                        <button onclick="filterByChannel('online')" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg 
-                                       transition-colors duration-200 text-sm">
-                            💻 Solo Online
-                        </button>
-                        <button onclick="filterByCurrentQuarter()" 
-                                class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg 
-                                       transition-colors duration-200 text-sm">
-                            📊 Trimestre Corrente
-                        </button>
+                    <!-- Seconda riga filtri avanzati -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+                        <!-- Filtro Canale -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🌐 Canale <span id="channelCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="channelFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('channelFilter')">
+                                    <span class="selected-text">Seleziona canali...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtro Tipo Gioco Ippico -->
+                        <div id="tipoGiocoFilterDiv" style="display: none;">
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🎯 Tipo Gioco <span id="tipoGiocoCount" class="text-purple-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="tipoGiocoFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('tipoGiocoFilter')">
+                                    <span class="selected-text">Seleziona tipi...</span>
+                                    <span class="float-right text-purple-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtro Gruppo -->
+                        <div id="gruppoFilterDiv" style="display: none;">
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🏛️ Gruppo <span id="gruppoCount" class="text-indigo-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="gruppoFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('gruppoFilter')">
+                                    <span class="selected-text">Seleziona gruppi...</span>
+                                    <span class="float-right text-indigo-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtro Concessionari -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🏢 Concessionari <span id="concessionaryCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="concessionaryFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('concessionaryFilter')">
+                                    <span class="selected-text">Seleziona concessionari...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtro Proprietà -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                🔑 Proprietà <span id="proprietaCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="proprietaFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('proprietaFilter')">
+                                    <span class="selected-text">Seleziona proprietà...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtro Ragione Sociale -->
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-3">
+                                📄 Ragione Sociale <span id="ragioneSocialeCount" class="text-blue-600 font-normal"></span>
+                            </label>
+                            <div class="multi-select" id="ragioneSocialeFilter">
+                                <button type="button" class="multi-select-button" onclick="toggleDropdown('ragioneSocialeFilter')">
+                                    <span class="selected-text">Seleziona ragioni sociali...</span>
+                                    <span class="float-right text-blue-600">▼</span>
+                                </button>
+                                <div class="multi-select-dropdown">
+                                    <div class="multi-select-options"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controlli azione -->
+                    <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-6 rounded-lg border mb-6">
+                        <div class="flex flex-wrap gap-4 items-center justify-center">
+                            <button onclick="applyFilters()" 
+                                    class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 
+                                           text-white px-8 py-3 rounded-lg font-bold shadow-lg hover:shadow-xl 
+                                           transform hover:-translate-y-1 transition-all duration-200">
+                                ✅ Applica Filtri Ultra-Veloci
+                                <span class="fast-filter-indicator ml-2">⚡</span>
+                            </button>
+                            
+                            <button onclick="resetFilters()" 
+                                    class="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 
+                                           text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                           transform hover:-translate-y-1 transition-all duration-200">
+                                🔄 Reset Tutti
+                            </button>
+                            
+                            <button onclick="selectAllFilters()" 
+                                    class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+                                           text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                           transform hover:-translate-y-1 transition-all duration-200">
+                                ☑️ Seleziona Tutto
+                            </button>
+                            
+                            <button onclick="deselectAllFilters()" 
+                                    class="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 
+                                           text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                           transform hover:-translate-y-1 transition-all duration-200">
+                                ☐ Deseleziona Tutto
+                            </button>
+                        </div>
+                        
+                        <!-- Filtri rapidi -->
+                        <div class="flex flex-wrap gap-3 mt-4 justify-center">
+                            <button onclick="filterByChannel('fisico')" 
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg 
+                                           transition-colors duration-200 text-sm font-semibold">
+                                📍 Solo Fisico
+                            </button>
+                            <button onclick="filterByChannel('online')" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg 
+                                           transition-colors duration-200 text-sm font-semibold">
+                                💻 Solo Online
+                            </button>
+                            <button onclick="filterByCurrentQuarter()" 
+                                    class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg 
+                                           transition-colors duration-200 text-sm font-semibold">
+                                📊 Trimestre Corrente
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Riassunto filtri attivi -->
-                    <div id="activeFilters" class="mt-4 p-4 bg-gray-50 rounded-lg" style="display: none;">
-                        <h4 class="text-sm font-medium text-gray-700 mb-2">Filtri Attivi:</h4>
-                        <div id="filterSummary" class="text-sm text-gray-600"></div>
+                    <div id="activeFilters" class="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg border-2 border-blue-200" style="display: none;">
+                        <h4 class="text-lg font-bold text-blue-800 mb-3">🎛️ Filtri Attualmente Attivi:</h4>
+                        <div id="filterSummary" class="text-sm text-blue-700"></div>
                     </div>
                 </div>
 
                 <!-- Messaggio quando non ci sono dati -->
-                <div id="noDataMessage" class="text-center text-gray-600 mt-8">
-                    <div class="text-6xl mb-4">📊</div>
-                    <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
-                    <p>Carica dei file Excel dalla sezione "Gestione" per abilitare i filtri.</p>
+                <div id="noDataMessage" class="text-center text-gray-600 mt-12">
+                    <div class="text-8xl mb-6">📊</div>
+                    <h3 class="text-2xl font-semibold mb-4">Nessun dato disponibile per i filtri</h3>
+                    <p class="text-lg">Carica dei file Excel dalla sezione "Gestione Sistema" per abilitare il sistema di filtri ultra-veloce.</p>
                 </div>
             </div>
 
-            <!-- 🆕 TAB 3: GRAFICI E STATISTICHE -->
+            <!-- TAB 3: GRAFICI E STATISTICHE -->
             <div id="tab-grafici" class="tab-content">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-6">📊 Grafici e Statistiche</h2>
+                <h2 class="text-3xl font-semibold text-gray-800 mb-8">
+                    📊 Grafici e Statistiche Avanzate
+                    <span class="performance-badge">📈 TOP 20</span>
+                    <span class="performance-badge optimized-indicator">⚡ VELOCE</span>
+                </h2>
                 
                 <div id="analyticsSection" class="charts-section" style="display: none;">
-                    <!-- Chart Container (in alto per più spazio) -->
+                    <!-- Chart Container -->
                     <div class="chart-container">
-                        <div class="glass-effect rounded-lg p-6 h-full">
-                            <h3 class="text-lg font-semibold text-white mb-4">📈 Grafici Interattivi</h3>
-                            <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <select id="chartType" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
+                        <div class="glass-effect rounded-lg p-8 h-full">
+                            <h3 class="text-2xl font-semibold text-white mb-6">📈 Grafici Interattivi Ottimizzati</h3>
+                            <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <select id="chartType" class="w-full p-4 border-2 border-gray-300 rounded-lg bg-white font-medium text-gray-700">
                                     <option value="bar">📊 Grafico a Barre</option>
                                     <option value="line">📈 Grafico a Linee</option>
                                     <option value="pie">🥧 Grafico a Torta</option>
                                     <option value="doughnut">🍩 Grafico a Ciambella</option>
                                 </select>
-                                <select id="chartMetric" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
+                                <select id="chartMetric" class="w-full p-4 border-2 border-gray-300 rounded-lg bg-white font-medium text-gray-700">
                                     <option value="importoRaccolta">💰 Importo Raccolta</option>
                                     <option value="importoSpesa">💸 Importo Spesa</option>
                                     <option value="percentualeRaccolta">📈 Percentuale Raccolta</option>
                                     <option value="percentualeSpesa">📉 Percentuale Spesa</option>
                                 </select>
-                                <select id="chartGroupBy" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
-                                    <option value="concessionarioNome">Raggruppa per Concessionario</option>
-                                    <option value="ragioneSociale">Raggruppa per Ragione Sociale</option>
-                                    <option value="concessionarioProprietà">Raggruppa per Proprietà</option>
-                                    <option value="gameNameComplete">Raggruppa per Gioco</option>
-                                    <option value="comparto">🆕 Raggruppa per Comparto</option>
-                                    <option value="gruppo">🆕 Raggruppa per Gruppo</option>
-                                    <option value="tipoGiocoName">🆕 Raggruppa per Tipo Gioco Ippico</option>
-                                    <option value="canale">Raggruppa per Canale</option>
-                                    <option value="quarterYear">Raggruppa per Trimestre</option>
-                                    <option value="monthYear">Raggruppa per Mese</option>
+                                <select id="chartGroupBy" class="w-full p-4 border-2 border-gray-300 rounded-lg bg-white font-medium text-gray-700">
+                                    <option value="concessionarioNome">🏢 Raggruppa per Concessionario</option>
+                                    <option value="ragioneSociale">📄 Raggruppa per Ragione Sociale</option>
+                                    <option value="concessionarioProprietà">🔑 Raggruppa per Proprietà</option>
+                                    <option value="gameNameComplete">🎮 Raggruppa per Gioco</option>
+                                    <option value="comparto">🏢 Raggruppa per Comparto</option>
+                                    <option value="gruppo">🏛️ Raggruppa per Gruppo</option>
+                                    <option value="tipoGiocoName">🎯 Raggruppa per Tipo Gioco Ippico</option>
+                                    <option value="canale">🌐 Raggruppa per Canale</option>
+                                    <option value="quarterYear">📊 Raggruppa per Trimestre</option>
+                                    <option value="monthYear">🗓️ Raggruppa per Mese</option>
                                 </select>
                             </div>
-                            <div class="relative" style="height: calc(100% - 120px);">
+                            <div class="relative bg-white rounded-lg p-4" style="height: calc(100% - 140px);">
                                 <canvas id="mainChart" style="max-height: 100%;"></canvas>
                             </div>
                             <button onclick="downloadChart()" 
-                                    class="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
-                                📥 Scarica Grafico
+                                    class="mt-6 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 
+                                           text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                           transform hover:-translate-y-1 transition-all duration-200">
+                                📥 Scarica Grafico PNG
                             </button>
                         </div>
                     </div>
 
-                    <!-- Summary Stats (in basso) -->
+                    <!-- Summary Stats -->
                     <div class="stats-container">
-                        <div class="glass-effect rounded-lg p-6 h-full">
-                            <h3 class="text-lg font-semibold text-white mb-4">📋 Statistiche Riassuntive</h3>
-                            <div id="summaryStats" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 h-full overflow-y-auto">
+                        <div class="glass-effect rounded-lg p-8 h-full">
+                            <h3 class="text-2xl font-semibold text-white mb-6">📋 Dashboard Statistiche Real-time</h3>
+                            <div id="summaryStats" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 h-full overflow-y-auto">
                                 <!-- Stats will be populated here -->
                             </div>
-                            <div id="negativeValuesAlert" class="mt-4 p-3 bg-yellow-500 bg-opacity-20 rounded-lg" style="display: none;">
-                                <h4 class="text-yellow-200 font-medium">⚠️ Valori Negativi Rilevati</h4>
-                                <div id="negativeValuesList" class="text-yellow-100 text-sm mt-2"></div>
+                            
+                            <!-- Alert valori negativi -->
+                            <div id="negativeValuesAlert" class="mt-6 p-4 bg-yellow-500 bg-opacity-20 rounded-lg border-2 border-yellow-400" style="display: none;">
+                                <h4 class="text-yellow-200 font-bold text-lg">⚠️ Valori Negativi Rilevati nel Dataset</h4>
+                                <div id="negativeValuesList" class="text-yellow-100 text-sm mt-3 max-h-32 overflow-y-auto"></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Messaggio quando non ci sono dati -->
-                <div id="noChartsMessage" class="text-center text-gray-600 mt-8">
-                    <div class="text-6xl mb-4">📈</div>
-                    <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
-                    <p>Carica dei file Excel e applica i filtri per visualizzare grafici e statistiche.</p>
+                <div id="noChartsMessage" class="text-center text-gray-600 mt-12">
+                    <div class="text-8xl mb-6">📈</div>
+                    <h3 class="text-2xl font-semibold mb-4">Nessun dato disponibile per i grafici</h3>
+                    <p class="text-lg">Carica dei file Excel e applica i filtri per visualizzare grafici e statistiche dettagliate.</p>
                 </div>
             </div>
 
-            <!-- 🆕 TAB 4: TABELLE -->
+            <!-- TAB 4: TABELLE OTTIMIZZATE -->
             <div id="tab-tabelle" class="tab-content">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-6">📋 Tabelle Dati</h2>
+                <h2 class="text-3xl font-semibold text-gray-800 mb-8">
+                    📋 Tabelle Ultra-Ottimizzate
+                    <span class="virtual-indicator">🚀 VIRTUAL SCROLL</span>
+                    <span class="performance-badge">📄 PAGINAZIONE</span>
+                </h2>
                 
                 <div id="tableSection" style="display: none;">
-                    <div class="glass-effect rounded-lg p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold text-white">📊 Tabella Dati Filtrati</h3>
-                            <div class="space-x-2">
+                    <div class="glass-effect rounded-lg p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-2xl font-semibold text-white">
+                                📊 Tabella Dati Filtrati con Performance Estrema
+                                <span class="performance-badge virtual-indicator">MAX 50 RECORD/PAGINA</span>
+                            </h3>
+                            <div class="space-x-3">
                                 <button onclick="downloadTable('csv')" 
-                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
-                                    📊 Scarica CSV
+                                        class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 
+                                               text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                               transform hover:-translate-y-1 transition-all duration-200">
+                                    📊 Esporta CSV
                                 </button>
                                 <button onclick="downloadTable('excel')" 
-                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                                    📈 Scarica Excel
+                                        class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+                                               text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl 
+                                               transform hover:-translate-y-1 transition-all duration-200">
+                                    📈 Esporta Excel
                                 </button>
                             </div>
                         </div>
-                        <div class="table-container">
-                            <table id="dataTable" class="min-w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
+                        
+                        <!-- Tabella ottimizzata -->
+                        <div class="table-container-optimized">
+                            <table id="dataTable" class="min-w-full bg-white rounded-lg overflow-hidden table-optimized">
                                 <thead id="tableHead" class="bg-gray-50">
                                     <!-- Headers will be populated here -->
                                 </thead>
                                 <tbody id="tableBody">
-                                    <!-- Data will be populated here -->
+                                    <!-- Data will be populated here with virtual scrolling -->
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- Pagination Container -->
+                        <div id="paginationControls"></div>
                     </div>
                 </div>
 
                 <!-- Messaggio quando non ci sono dati -->
-                <div id="noTableMessage" class="text-center text-gray-600 mt-8">
-                    <div class="text-6xl mb-4">📋</div>
-                    <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
-                    <p>Carica dei file Excel e applica i filtri per visualizzare la tabella dati.</p>
+                <div id="noTableMessage" class="text-center text-gray-600 mt-12">
+                    <div class="text-8xl mb-6">📋</div>
+                    <h3 class="text-2xl font-semibold mb-4">Nessun dato disponibile per le tabelle</h3>
+                    <p class="text-lg">Carica dei file Excel e applica i filtri per visualizzare la tabella dati ottimizzata.</p>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="app.js"></script>
-    <script>
-        // 🆕 Sistema di navigazione tra i tab
-        function switchTab(tabName) {
-            // Rimuovi classe active da tutti i tab
-            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Aggiungi classe active al tab selezionato
-            event.target.closest('.nav-tab').classList.add('active');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-            
-            // Aggiorna indicatore sezione
-            const indicator = document.getElementById('sectionIndicator');
-            const sectionNames = {
-                'gestione': '⚙️ Gestione',
-                'filtri': '🎛️ Filtri',
-                'grafici': '📊 Grafici',
-                'tabelle': '📋 Tabelle'
-            };
-            indicator.textContent = sectionNames[tabName];
-            
-            // Gestione visibilità contenuti
-            updateSectionVisibility(tabName);
-            
-            // Se stiamo andando sui grafici, ridimensiona il grafico
-            if (tabName === 'grafici' && currentChart) {
-                setTimeout(() => {
-                    currentChart.resize();
-                }, 100);
-            }
-        }
-        
-        function updateSectionVisibility(activeTab) {
-            const hasData = allData && allData.length > 0;
-            
-            // Gestione sezione filtri
-            const filtersSection = document.getElementById('filtersSection');
-            const noDataMessage = document.getElementById('noDataMessage');
-            
-            if (activeTab === 'filtri') {
-                if (hasData) {
-                    filtersSection.style.display = 'block';
-                    noDataMessage.style.display = 'none';
-                } else {
-                    filtersSection.style.display = 'none';
-                    noDataMessage.style.display = 'block';
-                }
-            }
-            
-            // Gestione sezione grafici
-            const analyticsSection = document.getElementById('analyticsSection');
-            const noChartsMessage = document.getElementById('noChartsMessage');
-            
-            if (activeTab === 'grafici') {
-                if (hasData && filteredData && filteredData.length > 0) {
-                    analyticsSection.style.display = 'flex';
-                    noChartsMessage.style.display = 'none';
-                } else {
-                    analyticsSection.style.display = 'none';
-                    noChartsMessage.style.display = 'block';
-                }
-            }
-            
-            // Gestione sezione tabelle
-            const tableSection = document.getElementById('tableSection');
-            const noTableMessage = document.getElementById('noTableMessage');
-            
-            if (activeTab === 'tabelle') {
-                if (hasData && filteredData && filteredData.length > 0) {
-                    tableSection.style.display = 'block';
-                    noTableMessage.style.display = 'none';
-                } else {
-                    tableSection.style.display = 'none';
-                    noTableMessage.style.display = 'block';
-                }
-            }
-        }
-        
-        // Aggiorna la funzione updateDisplays per gestire la visibilità
-        function updateDisplaysWithNav() {
-            updateChart();
-            updateTable();
-            updateSummaryStats();
-            
-            // Aggiorna visibilità basata sul tab attivo
-            const activeTab = document.querySelector('.tab-content.active').id.replace('tab-', '');
-            updateSectionVisibility(activeTab);
-        }
-        
-        // Override della funzione updateDisplays originale
-        const originalUpdateDisplays = updateDisplays;
-        updateDisplays = updateDisplaysWithNav;
-    </script>
 </body>
 </html>
