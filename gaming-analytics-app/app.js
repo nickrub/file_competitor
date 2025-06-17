@@ -571,7 +571,8 @@ function loadStoredData() {
                     concessionarioNome: item.concessionarioNome || item.ragioneSociale,
                     concessionarioProprietà: item.concessionarioProprietà || 'Non specificato',
                     gameNameComplete: item.gameNameComplete || item.gameName,
-                    comparto: item.comparto || 'Non classificato'
+                    comparto: item.comparto || 'Non classificato',
+                    gruppo: item.gruppo || ''
                 }));
                 
                 if (allData.length > 0) {
@@ -632,10 +633,12 @@ function updateDataStatus() {
         const channels = [...new Set(allData.map(item => item.canale))];
         const dateRange = getDateRange();
         const hippoCount = allData.filter(item => item.fileFormat === 'hippoFormat').length;
+        const historicalCount = allData.filter(item => item.fileFormat === 'historicalFormat').length; // 🆕
         const hippoText = hippoCount > 0 ? ` | 🎯 ${hippoCount} ippici` : '';
+        const historicalText = historicalCount > 0 ? ` | 📊 ${historicalCount} storici` : ''; // 🆕
         const comparti = [...new Set(allData.map(item => item.comparto))];
         const compartiText = comparti.length > 1 ? ` | 🏢 ${comparti.length} comparti` : '';
-        statusDiv.innerHTML = `📊 ${allData.length} record da ${uniqueFiles} file | 🌐 ${channels.map(c => channelNames[c] || c).join(', ')} | 📅 ${dateRange}${hippoText}${compartiText} | 💾 Salvato automaticamente`;
+        statusDiv.innerHTML = `📊 ${allData.length} record da ${uniqueFiles} file | 🌐 ${channels.map(c => channelNames[c] || c).join(', ')} | 📅 ${dateRange}${hippoText}${historicalText}${compartiText} | 💾 Salvato automaticamente`;
     } else {
         statusDiv.innerHTML = '💡 Nessun dato caricato';
     }
@@ -728,22 +731,57 @@ function isHippoFormat(jsonData) {
     return false;
 }
 
+// 🆕 Funzione per riconoscere il formato storico (DB-MARKET SHARE)
+function isHistoricalFormat(jsonData) {
+    if (jsonData.length < 2) return false;
+    
+    // Controlla se la prima riga contiene gli headers del formato storico
+    const headers = jsonData[0];
+    if (!headers || headers.length < 12) return false;
+    
+    const expectedHeaders = ['ANNO', 'MESE', 'N.CONC.', 'RAGIONE SOCIALE', 'CONCESSIONARIO', 'CANALE', 'GRUPPO', 'COMPARTO', 'GIOCO', 'GGT (VA)', 'PAYOUT (VA)', 'SPESA (VA)'];
+    
+    // Controlla se i primi header corrispondono
+    for (let i = 0; i < Math.min(expectedHeaders.length, headers.length); i++) {
+        if (headers[i] !== expectedHeaders[i]) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 function readExcelFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         
         reader.onload = function(e) {
             try {
-                const workbook = XLSX.read(e.target.result, { type: 'binary' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
+                const workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+                
+                // Se il file ha più fogli, cerca prima il foglio DB-MARKET SHARE-2022
+                let sheetName = workbook.SheetNames[0];
+                let worksheet = workbook.Sheets[sheetName];
+                
+                // 🆕 Controllo speciale per il file DB CPT - cerca il foglio storico
+                if (workbook.SheetNames.includes('DB-MARKET SHARE-2022')) {
+                    console.log('Rilevato file DB CPT - usando foglio DB-MARKET SHARE-2022');
+                    sheetName = 'DB-MARKET SHARE-2022';
+                    worksheet = workbook.Sheets[sheetName];
+                }
+                
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
                 // Riconosce il formato basandosi sulla struttura
                 let parsedData;
                 
+                // 🆕 CONTROLLO PER FORMATO STORICO (PRIORITÀ ALTA)
+                if (isHistoricalFormat(jsonData)) {
+                    console.log(`Riconosciuto formato STORICO per file: ${file.name} (foglio: ${sheetName})`);
+                    parsedData = parseHistoricalFormatExcelData(jsonData, file.name);
+                }
                 // 🆕 CONTROLLO PER FORMATO IPPICO
-                if (isHippoFormat(jsonData)) {
+                else if (isHippoFormat(jsonData)) {
                     console.log(`Riconosciuto formato IPPICO per file: ${file.name}`);
                     parsedData = parseHippoFormatExcelData(jsonData, file.name);
                 }
@@ -887,6 +925,118 @@ function parseNewFormatExcelData(jsonData, fileName) {
         isNegativeSpesa: parseItalianNumber(row[4]) < 0,
         fileFormat: 'newFormat' // Flag per identificare il nuovo formato
     }));
+}
+
+// 🆕 Nuova funzione per il parsing del formato storico (DB-MARKET SHARE)
+function parseHistoricalFormatExcelData(jsonData, fileName) {
+    if (jsonData.length < 2) {
+        throw new Error(`File ${fileName}: formato storico non valido (troppo poche righe)`);
+    }
+
+    // I dati iniziano dalla riga 2 (indice 1), la riga 1 (indice 0) contiene gli headers
+    const headers = jsonData[0];
+    console.log('Headers formato storico:', headers);
+
+    // Filtra le righe con dati validi
+    const dataRows = jsonData.slice(1).filter(row => 
+        row && row[0] && row[1] && row[2] && row[3] // Anno, Mese, N.CONC, Ragione Sociale
+    );
+    
+    console.log(`Formato storico: elaborando ${dataRows.length} righe di dati`);
+    
+    return dataRows.map((row, index) => {
+        // Estrazione e conversione dei campi
+        const anno = row[0];
+        
+        // Conversione della data Excel in numero mese
+        let month = '01';
+        try {
+            const dateValue = row[1];
+            let dateObj;
+            
+            if (dateValue instanceof Date) {
+                dateObj = dateValue;
+            } else if (typeof dateValue === 'string') {
+                dateObj = new Date(dateValue);
+            } else if (typeof dateValue === 'number') {
+                // Excel serial date
+                dateObj = new Date((dateValue - 25569) * 86400 * 1000);
+            } else {
+                throw new Error('Formato data non riconosciuto');
+            }
+            
+            month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        } catch (error) {
+            console.warn(`Errore conversione data riga ${index + 2}:`, error, 'Valore:', row[1]);
+            month = '01'; // Fallback
+        }
+
+        const year = anno.toString();
+        const quarter = getQuarter(month);
+        const quarterYear = `${quarter}/${year}`;
+        
+        // Mappatura campi
+        const codiceConcessione = row[2]?.toString().trim() || '';
+        const ragioneSociale = row[3]?.toString().trim() || '';
+        const concessionario = row[4]?.toString().trim() || '';
+        const canale = row[5]?.toString().toLowerCase().trim() || 'fisico';
+        const gruppo = row[6]?.toString().trim() || '';
+        const comparto = row[7]?.toString().trim() || 'Non classificato';
+        const gioco = row[8]?.toString().trim() || 'Gioco Sconosciuto';
+        
+        // Valori numerici - questi sono già numeri nel file
+        const ggt = row[9] || 0;
+        const payout = row[10] || 0;
+        const spesa = row[11] || 0;
+        
+        // Conversione per compatibilità con il resto dell'app
+        const importoRaccolta = ggt.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const importoSpesa = spesa.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        // Calcolo percentuali se possibile
+        let percentualeRaccolta = '0%';
+        let percentualeSpesa = '0%';
+        
+        if (ggt > 0) {
+            const percSpesa = (spesa / ggt) * 100;
+            percentualeSpesa = percSpesa.toFixed(2) + '%';
+            
+            const percPayout = (payout / ggt) * 100;
+            percentualeRaccolta = percPayout.toFixed(2) + '%';
+        }
+
+        return {
+            fileName: fileName,
+            gameName: gioco,
+            gameNameOriginal: gioco,
+            gameNameComplete: gioco,
+            month: month,
+            year: year,
+            monthYear: `${month}/${year}`,
+            quarter: quarter,
+            quarterYear: quarterYear,
+            codiceConcessione: codiceConcessione,
+            ragioneSociale: ragioneSociale,
+            concessionarioNome: concessionario,
+            importoRaccolta: importoRaccolta,
+            percentualeRaccolta: percentualeRaccolta,
+            importoSpesa: importoSpesa,
+            percentualeSpesa: percentualeSpesa,
+            monthName: monthNames[month] || month,
+            quarterName: quarterNames[quarter] || quarter,
+            isNegativeSpesa: spesa < 0,
+            canale: canale,
+            channelName: channelNames[canale] || canale,
+            concessionarioProprietà: 'Non specificato', // Sarà aggiornato da anagrafica se disponibile
+            comparto: comparto,
+            // 🆕 Nuovi campi specifici del formato storico
+            gruppo: gruppo,
+            ggt: ggt,
+            payout: payout,
+            spesaNumerica: spesa,
+            fileFormat: 'historicalFormat' // Flag per identificare il formato storico
+        };
+    });
 }
 
 // 🆕 Nuova funzione per il parsing del formato ippico
@@ -1142,6 +1292,11 @@ function populateFilters() {
         .filter(item => item.fileFormat === 'hippoFormat')
         .map(item => item.tipoGiocoName))].sort();
 
+    // 🆕 Aggiunto filtro per gruppi se ci sono dati storici
+    const gruppi = [...new Set(allData
+        .filter(item => item.fileFormat === 'historicalFormat' && item.gruppo)
+        .map(item => item.gruppo))].sort();
+
     populateMultiSelectImproved('gameFilter', games, true);
     populateMultiSelectImproved('yearFilter', years, true);
     populateMultiSelectImproved('quarterFilter', quarters, true, (q) => {
@@ -1167,6 +1322,17 @@ function populateFilters() {
         }
     } else if (tipoGiocoFilterDiv) {
         tipoGiocoFilterDiv.style.display = 'none';
+    }
+    
+    // 🆕 Mostra filtro gruppo solo se ci sono dati storici
+    const gruppoFilterDiv = document.getElementById('gruppoFilterDiv');
+    if (gruppi.length > 0) {
+        if (gruppoFilterDiv) {
+            gruppoFilterDiv.style.display = 'block';
+            populateMultiSelectImproved('gruppoFilter', gruppi, true);
+        }
+    } else if (gruppoFilterDiv) {
+        gruppoFilterDiv.style.display = 'none';
     }
     
     updateFilterCounts();
@@ -1292,6 +1458,7 @@ function updateFilterCounts() {
     const ragioneSocialeCountEl = document.getElementById('ragioneSocialeCount');
     const tipoGiocoCountEl = document.getElementById('tipoGiocoCount');
     const compartoCountEl = document.getElementById('compartoCount');
+    const gruppoCountEl = document.getElementById('gruppoCount'); // 🆕
 
     if (gameCountEl) gameCountEl.textContent = `(${[...new Set(allData.map(item => item.gameNameComplete || item.gameName))].length})`;
     if (yearCountEl) yearCountEl.textContent = `(${[...new Set(allData.map(item => item.year))].length})`;
@@ -1310,6 +1477,15 @@ function updateFilterCounts() {
         
     if (tipoGiocoCountEl && tipiGiocoIppico.length > 0) {
         tipoGiocoCountEl.textContent = `(${tipiGiocoIppico.length})`;
+    }
+
+    // 🆕 Aggiunto conteggio per gruppi
+    const gruppi = [...new Set(allData
+        .filter(item => item.fileFormat === 'historicalFormat' && item.gruppo)
+        .map(item => item.gruppo))];
+        
+    if (gruppoCountEl && gruppi.length > 0) {
+        gruppoCountEl.textContent = `(${gruppi.length})`;
     }
 }
 
@@ -1376,13 +1552,18 @@ function applyFilters() {
     const proprietaFilter = getSelectedValues('proprietaFilter');
     const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
     const tipoGiocoFilter = getSelectedValues('tipoGiocoFilter');
-    const compartoFilter = getSelectedValues('compartoFilter'); // 🆕
+    const compartoFilter = getSelectedValues('compartoFilter');
+    const gruppoFilter = getSelectedValues('gruppoFilter'); // 🆕
 
     filteredData = allData.filter(item => {
         const gameToCheck = item.gameNameComplete || item.gameName;
         const tipoGiocoMatch = item.fileFormat === 'hippoFormat' ? 
             (tipoGiocoFilter.length === 0 || tipoGiocoFilter.includes(item.tipoGiocoName)) : 
             true; // Se non è formato ippico, passa sempre il filtro tipo gioco
+
+        const gruppoMatch = item.fileFormat === 'historicalFormat' ? 
+            (gruppoFilter.length === 0 || gruppoFilter.includes(item.gruppo)) : 
+            true; // Se non è formato storico, passa sempre il filtro gruppo
             
         return gameFilter.includes(gameToCheck) &&
                yearFilter.includes(item.year) &&
@@ -1392,8 +1573,9 @@ function applyFilters() {
                concessionaryFilter.includes(item.concessionarioNome) &&
                proprietaFilter.includes(item.concessionarioProprietà) &&
                ragioneSocialeFilter.includes(item.ragioneSociale) &&
-               compartoFilter.includes(item.comparto) && // 🆕
-               tipoGiocoMatch;
+               compartoFilter.includes(item.comparto) &&
+               tipoGiocoMatch &&
+               gruppoMatch; // 🆕
     });
 
     updateDisplays();
@@ -1419,6 +1601,7 @@ function updateActiveFiltersDisplay() {
     const ragioneSocialeFilter = getSelectedValues('ragioneSocialeFilter');
     const tipoGiocoFilter = getSelectedValues('tipoGiocoFilter');
     const compartoFilter = getSelectedValues('compartoFilter');
+    const gruppoFilter = getSelectedValues('gruppoFilter'); // 🆕
     
     const totalGames = [...new Set(allData.map(item => item.gameNameComplete || item.gameName))].length;
     const totalYears = [...new Set(allData.map(item => item.year))].length;
@@ -1430,6 +1613,7 @@ function updateActiveFiltersDisplay() {
     const totalRagioneSociali = [...new Set(allData.map(item => item.ragioneSociale))].length;
     const totalTipiGioco = [...new Set(allData.filter(item => item.fileFormat === 'hippoFormat').map(item => item.tipoGiocoName))].length;
     const totalComparti = [...new Set(allData.map(item => item.comparto))].length;
+    const totalGruppi = [...new Set(allData.filter(item => item.fileFormat === 'historicalFormat' && item.gruppo).map(item => item.gruppo))].length; // 🆕
     
     const filtersActive = 
         gameFilter.length < totalGames ||
@@ -1441,12 +1625,14 @@ function updateActiveFiltersDisplay() {
         proprietaFilter.length < totalProprieta ||
         ragioneSocialeFilter.length < totalRagioneSociali ||
         compartoFilter.length < totalComparti ||
-        (totalTipiGioco > 0 && tipoGiocoFilter.length < totalTipiGioco);
+        (totalTipiGioco > 0 && tipoGiocoFilter.length < totalTipiGioco) ||
+        (totalGruppi > 0 && gruppoFilter.length < totalGruppi); // 🆕
     
     if (filtersActive) {
         activeFiltersDiv.style.display = 'block';
         const tipoGiocoSummary = totalTipiGioco > 0 ? `<div>🎯 Tipi Gioco: ${tipoGiocoFilter.length}/${totalTipiGioco}</div>` : '';
         const compartoSummary = totalComparti > 1 ? `<div>🏢 Comparti: ${compartoFilter.length}/${totalComparti}</div>` : '';
+        const gruppoSummary = totalGruppi > 0 ? `<div>🏛️ Gruppi: ${gruppoFilter.length}/${totalGruppi}</div>` : ''; // 🆕
         summaryDiv.innerHTML = `
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-2 text-xs">
                 <div>🎮 Giochi: ${gameFilter.length}/${totalGames}</div>
@@ -1455,6 +1641,7 @@ function updateActiveFiltersDisplay() {
                 <div>🗓️ Mesi: ${monthFilter.length}/${totalMonths}</div>
                 <div>🌐 Canali: ${channelFilter.length}/${totalChannels}</div>
                 ${tipoGiocoSummary}
+                ${gruppoSummary}
                 ${compartoSummary}
                 <div>🏢 Concessionari: ${concessionaryFilter.length}/${totalConcessionari}</div>
                 <div>🔑 Proprietà: ${proprietaFilter.length}/${totalProprieta}</div>
@@ -1573,7 +1760,8 @@ function getGroupByTitle(groupBy) {
         'concessionarioProprietà': 'Proprietà',
         'gameNameComplete': 'Gioco',
         'tipoGiocoName': 'Tipo Gioco Ippico',
-        'comparto': 'Comparto' // 🆕
+        'comparto': 'Comparto',
+        'gruppo': 'Gruppo' // 🆕
     };
     return titles[groupBy] || groupBy;
 }
@@ -1614,8 +1802,8 @@ function updateTable() {
     const tableHead = document.getElementById('tableHead');
     const tableBody = document.getElementById('tableBody');
     
-    // 🆕 Headers aggiornati per includere comparto
-    const headers = ['Gioco', 'Tipo', 'Comparto', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    // 🆕 Headers aggiornati per includere gruppo
+    const headers = ['Gioco', 'Tipo', 'Comparto', 'Gruppo', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     tableHead.innerHTML = `
         <tr>
             ${headers.map((header, index) => `
@@ -1634,15 +1822,27 @@ function updateTable() {
             `<span class="tipo-gioco-badge tipo-${row.tipoGioco?.toLowerCase()}">${row.tipoGiocoName || ''}</span>` : 
             '-';
         
-        const rowClass = row.fileFormat === 'hippoFormat' ? 'hippo-row' : '';
+        // 🆕 Badge per gruppo (solo per dati storici)
+        const gruppoDisplay = row.fileFormat === 'historicalFormat' && row.gruppo ? 
+            `<span class="gruppo-badge">${row.gruppo}</span>` : 
+            '-';
+        
+        // 🆕 Stile riga basato sul formato
+        let rowClass = 'hover:bg-gray-50';
+        if (row.fileFormat === 'hippoFormat') {
+            rowClass += ' hippo-row';
+        } else if (row.fileFormat === 'historicalFormat') {
+            rowClass += ' historical-row';
+        }
         
         return `
-        <tr class="hover:bg-gray-50 ${rowClass}">
+        <tr class="${rowClass}">
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${(row.gameNameComplete || row.gameName).length > 15 ? (row.gameNameComplete || row.gameName).substring(0, 15) + '...' : (row.gameNameComplete || row.gameName)}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${tipoGiocoDisplay}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                 <span class="comparto-badge">${row.comparto}</span>
             </td>
+            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${gruppoDisplay}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.year}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.quarter}</td>
             <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${row.monthName}</td>
@@ -1663,7 +1863,7 @@ function updateTable() {
 }
 
 function sortTable(columnIndex) {
-    const columns = ['gameNameComplete', 'tipoGiocoName', 'comparto', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'concessionarioNome', 'ragioneSociale', 'concessionarioProprietà', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
+    const columns = ['gameNameComplete', 'tipoGiocoName', 'comparto', 'gruppo', 'year', 'quarter', 'monthName', 'canale', 'codiceConcessione', 'concessionarioNome', 'ragioneSociale', 'concessionarioProprietà', 'importoRaccolta', 'percentualeRaccolta', 'importoSpesa', 'percentualeSpesa'];
     const column = columns[columnIndex];
     
     if (sortColumn === column) {
@@ -1677,7 +1877,6 @@ function sortTable(columnIndex) {
     updateSortArrows(columnIndex);
 }
 
-// ✅ CORREZIONE: Usa parseItalianNumber per l'ordinamento
 function getSortedData() {
     if (!sortColumn) return filteredData;
     
@@ -1689,6 +1888,12 @@ function getSortedData() {
         if (sortColumn === 'tipoGiocoName') {
             valueA = a.tipoGiocoName || '';
             valueB = b.tipoGiocoName || '';
+        }
+        
+        // 🆕 Gestione ordinamento per gruppo
+        if (sortColumn === 'gruppo') {
+            valueA = a.gruppo || '';
+            valueB = b.gruppo || '';
         }
         
         if (sortColumn === 'gameNameComplete') {
@@ -1880,13 +2085,14 @@ function downloadTable(format) {
 }
 
 function downloadCSV() {
-    const headers = ['Gioco', 'Tipo Gioco', 'Comparto', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
+    const headers = ['Gioco', 'Tipo Gioco', 'Comparto', 'Gruppo', 'Anno', 'Trimestre', 'Mese', 'Canale', 'Codice', 'Concessionario', 'Ragione Sociale', 'Proprietà', 'Importo Raccolta', 'Perc. Raccolta', 'Importo Spesa', 'Perc. Spesa'];
     const csvContent = [
         headers.join(','),
         ...filteredData.map(row => [
             `"${row.gameNameComplete || row.gameName}"`,
             `"${row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : ''}"`,
-            `"${row.comparto}"`, // 🆕
+            `"${row.comparto}"`,
+            `"${row.gruppo || ''}"`, // 🆕
             `"${row.year}"`,
             `"${row.quarter}"`,
             `"${row.monthName}"`,
@@ -1909,7 +2115,8 @@ function downloadExcel() {
     const worksheet = XLSX.utils.json_to_sheet(filteredData.map(row => ({
         'Gioco': row.gameNameComplete || row.gameName,
         'Tipo Gioco': row.fileFormat === 'hippoFormat' ? (row.tipoGiocoName || '') : '',
-        'Comparto': row.comparto, // 🆕
+        'Comparto': row.comparto,
+        'Gruppo': row.gruppo || '', // 🆕
         'Anno': row.year,
         'Trimestre': row.quarter,
         'Mese': row.monthName,

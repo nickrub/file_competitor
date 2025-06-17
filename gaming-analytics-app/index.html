@@ -350,6 +350,33 @@
             font-weight: bold;
         }
 
+        /* 🆕 Stile per evidenziare i dati storici */
+        .historical-row {
+            background-color: #f0f9ff;
+            border-left: 3px solid #0284c7;
+        }
+
+        .historical-indicator {
+            background: linear-gradient(45deg, #0284c7, #0369a1);
+            color: white;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        /* Badge per gruppo */
+        .gruppo-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
         /* 🆕 Layout migliorato per filtri su più righe */
         .filters-section {
             display: grid;
@@ -491,10 +518,11 @@
                         </button>
                     </div>
                     <div class="text-xs text-gray-600 mb-4">
-                        💡 Supporta 3 formati Excel: <br>
+                        💡 Supporta 4 formati Excel: <br>
                         • <strong>Formato Standard</strong>: Statistiche GAD normali<br>
                         • <strong>Formato Nuovo</strong>: Con "Periodo da..." nella riga 2<br>
-                        • <strong>🆕 Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA
+                        • <strong>🆕 Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA<br>
+                        • <strong>🆕 Formato Storico</strong>: DB-MARKET SHARE con dati 2018-2025 (99k+ record)
                     </div>
                     <div id="uploadStatus" class="text-sm text-gray-600"></div>
                 </div>
@@ -733,6 +761,23 @@
                                 </div>
                             </div>
 
+                            <!-- Filtro Gruppo (solo per dati storici) -->
+                            <div id="gruppoFilterDiv" style="display: none;">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    🏛️ Gruppo
+                                    <span id="gruppoCount" class="text-indigo-600"></span>
+                                </label>
+                                <div class="multi-select" id="gruppoFilter">
+                                    <button type="button" class="multi-select-button" onclick="toggleDropdown('gruppoFilter')">
+                                        <span class="selected-text">Seleziona gruppi...</span>
+                                        <span class="float-right">▼</span>
+                                    </button>
+                                    <div class="multi-select-dropdown">
+                                        <div class="multi-select-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Filtro Concessionari -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -868,6 +913,7 @@
                                     <option value="concessionarioProprietà">Raggruppa per Proprietà</option>
                                     <option value="gameNameComplete">Raggruppa per Gioco</option>
                                     <option value="comparto">🆕 Raggruppa per Comparto</option>
+                                    <option value="gruppo">🆕 Raggruppa per Gruppo</option>
                                     <option value="tipoGiocoName">🆕 Raggruppa per Tipo Gioco Ippico</option>
                                     <option value="canale">Raggruppa per Canale</option>
                                     <option value="quarterYear">Raggruppa per Trimestre</option>
