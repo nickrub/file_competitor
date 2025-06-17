@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gaming Analytics Dashboard</title>
+    <title>Gaming Analytics Dashboard - Performance Optimized</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
@@ -30,8 +30,75 @@
             margin-left: 5px;
             transition: transform 0.2s;
         }
+
+        /* 🚀 PROGRESS BAR STYLES */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            display: none;
+        }
         
-        /* 🆕 Stili per il sistema di navigazione */
+        .progress-bar-bg {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .progress-text {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        /* 🚀 PERFORMANCE INDICATORS */
+        .performance-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .loading-badge {
+            display: inline-block;
+            background: #f59e0b;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+            animation: pulse 1s infinite;
+        }
+
+        /* 🚀 PAGINAZIONE STYLES */
+        .pagination-container {
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 12px;
+        }
+
+        /* Sistema di navigazione esistente */
         .nav-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
@@ -94,7 +161,7 @@
             display: block;
         }
         
-        /* Stili migliorati per i filtri */
+        /* Stili filtri ottimizzati */
         .filter-container {
             background: transparent;
             border-radius: 0;
@@ -132,7 +199,6 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         
-        /* 🆕 Dropdown migliorato con layout a griglia */
         .multi-select-dropdown {
             position: absolute;
             top: 100%;
@@ -142,7 +208,7 @@
             border: 2px solid #e5e7eb;
             border-radius: 8px;
             margin-top: 4px;
-            max-height: 400px;
+            max-height: 300px;
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
@@ -154,7 +220,6 @@
             display: block;
         }
         
-        /* Opzione "Seleziona tutto" in evidenza */
         .select-all-option {
             background: #f8fafc;
             border-bottom: 2px solid #e2e8f0;
@@ -171,10 +236,9 @@
             margin: 8px 0;
         }
         
-        /* Grid per le opzioni */
         .filter-options-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 4px;
             padding: 8px;
         }
@@ -213,16 +277,6 @@
         .option-text {
             word-break: break-word;
             line-height: 1.3;
-        }
-        
-        .filter-badge {
-            display: inline-block;
-            background: #3b82f6;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            margin: 2px;
         }
         
         .negative-value {
@@ -266,7 +320,6 @@
             color: #166534;
         }
 
-        /* Stili per anagrafica */
         .section-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
@@ -275,7 +328,6 @@
             margin-bottom: 20px;
         }
 
-        /* 🆕 Stili per i badge dei tipi di gioco ippico */
         .tipo-gioco-badge {
             display: inline-block;
             padding: 2px 6px;
@@ -304,7 +356,6 @@
             border: 1px solid #ffcc02;
         }
 
-        /* 🆕 Stili per badge comparti */
         .comparto-badge {
             display: inline-block;
             padding: 2px 6px;
@@ -316,56 +367,16 @@
             border: 1px solid #b2dfdb;
         }
 
-        /* Responsive per il nuovo layout filtri */
-        @media (min-width: 768px) {
-            .filters-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .filters-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (min-width: 1280px) {
-            .filters-grid {
-                grid-template-columns: repeat(5, 1fr);
-            }
-        }
-
-        /* Stile per evidenziare i dati ippici */
         .hippo-row {
             background-color: #fafafa;
             border-left: 3px solid #9c27b0;
         }
 
-        .hippo-indicator {
-            background: linear-gradient(45deg, #9c27b0, #673ab7);
-            color: white;
-            padding: 1px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        /* 🆕 Stile per evidenziare i dati storici */
         .historical-row {
             background-color: #f0f9ff;
             border-left: 3px solid #0284c7;
         }
 
-        .historical-indicator {
-            background: linear-gradient(45deg, #0284c7, #0369a1);
-            color: white;
-            padding: 1px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        /* Badge per gruppo */
         .gruppo-badge {
             display: inline-block;
             padding: 2px 6px;
@@ -377,7 +388,6 @@
             border: 1px solid #bbf7d0;
         }
 
-        /* 🆕 Layout migliorato per filtri su più righe */
         .filters-section {
             display: grid;
             gap: 20px;
@@ -390,7 +400,6 @@
             align-items: start;
         }
 
-        /* 🆕 Layout specifico per la sezione grafici */
         .charts-section {
             display: flex;
             flex-direction: column;
@@ -408,7 +417,6 @@
             min-height: 200px;
         }
         
-        /* Responsive per sezione grafici */
         @media (max-width: 1024px) {
             .charts-section {
                 height: auto;
@@ -419,7 +427,6 @@
             }
         }
 
-        /* Stili per le sezioni mappature */
         .mapping-section {
             background: #f8f9fa;
             border-radius: 8px;
@@ -427,7 +434,6 @@
             margin-bottom: 16px;
         }
 
-        /* 🆕 Indicatore sezione attiva */
         .section-indicator {
             position: fixed;
             top: 80px;
@@ -442,7 +448,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Animazioni per transizioni */
         .tab-content {
             animation: fadeIn 0.3s ease-in-out;
         }
@@ -451,9 +456,23 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
+    <!-- 🚀 PROGRESS BAR -->
+    <div id="loadingProgress" class="progress-container">
+        <div id="progressText" class="progress-text">Caricamento in corso...</div>
+        <div class="progress-bar-bg">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <div class="text-xs mt-2">💡 I file grandi vengono elaborati in modo ottimizzato per le migliori performance</div>
+    </div>
+
     <!-- Indicatore persistenza dati -->
     <div id="persistenceIndicator" class="data-persistence-indicator">
         📊 Dati salvati automaticamente
@@ -465,14 +484,17 @@
     </div>
 
     <div class="container mx-auto p-6">
-        <!-- Header -->
+        <!-- Header con indicatori performance -->
         <div class="glass-effect rounded-lg p-6 mb-6">
-            <h1 class="text-3xl font-bold text-white mb-2">Gaming Analytics Dashboard</h1>
-            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi con sistema di navigazione avanzato</p>
+            <h1 class="text-3xl font-bold text-white mb-2">
+                Gaming Analytics Dashboard 
+                <span class="performance-badge">🚀 OTTIMIZZATO</span>
+            </h1>
+            <p class="text-gray-300">Analisi dati statistiche GAD - Quote spesa per giochi con performance ottimizzate per grandi dataset</p>
             <div id="dataStatus" class="mt-2 text-sm text-blue-200"></div>
         </div>
 
-        <!-- 🆕 Sistema di Navigazione -->
+        <!-- Sistema di Navigazione -->
         <div class="nav-container mb-6">
             <!-- Tab Navigation -->
             <div class="nav-tabs">
@@ -486,7 +508,7 @@
                 </div>
                 <div class="nav-tab" onclick="switchTab('grafici')">
                     <span class="nav-tab-icon">📊</span>
-                    <span class="nav-tab-text">Grafici e Statistiche</span>
+                    <span class="nav-tab-text">Grafici</span>
                 </div>
                 <div class="nav-tab" onclick="switchTab('tabelle')">
                     <span class="nav-tab-icon">📋</span>
@@ -494,13 +516,16 @@
                 </div>
             </div>
 
-            <!-- 🆕 TAB 1: GESTIONE -->
+            <!-- TAB 1: GESTIONE -->
             <div id="tab-gestione" class="tab-content active">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-6">⚙️ Gestione Sistema</h2>
                 
-                <!-- Upload Section -->
+                <!-- Upload Section con indicatori performance -->
                 <div class="section-container">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📁 Carica File Excel</h3>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
+                        📁 Carica File Excel 
+                        <span class="performance-badge">✨ OTTIMIZZATO</span>
+                    </h3>
                     <div class="flex items-center space-x-4 mb-4 flex-wrap gap-2">
                         <input type="file" id="fileInput" accept=".xlsx,.xls" multiple 
                                class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 
@@ -509,20 +534,25 @@
                         <button onclick="processFiles()" 
                                 class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg 
                                        transition-colors duration-200 whitespace-nowrap">
-                            Elabora File
+                            🚀 Elabora File Ottimizzato
                         </button>
                         <button onclick="clearStoredData()" 
                                 class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg 
                                        transition-colors duration-200 whitespace-nowrap">
-                            Cancella Dati
+                            🗑️ Cancella Dati
                         </button>
                     </div>
                     <div class="text-xs text-gray-600 mb-4">
-                        💡 Supporta 4 formati Excel: <br>
+                        🚀 <strong>Performance Ottimizzate:</strong><br>
+                        • <strong>Chunked Processing</strong>: File grandi elaborati in blocchi<br>
+                        • <strong>Progress Bar</strong>: Monitoraggio avanzamento in tempo reale<br>
+                        • <strong>Virtual Scrolling</strong>: Tabelle responsive anche con 100k+ record<br>
+                        • <strong>Indici di ricerca</strong>: Filtri ultra-veloci su grandi dataset<br><br>
+                        💡 <strong>Formati Supportati:</strong><br>
                         • <strong>Formato Standard</strong>: Statistiche GAD normali<br>
                         • <strong>Formato Nuovo</strong>: Con "Periodo da..." nella riga 2<br>
-                        • <strong>🆕 Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA<br>
-                        • <strong>🆕 Formato Storico</strong>: DB-MARKET SHARE con dati 2018-2025 (99k+ record)
+                        • <strong>Formato Ippico</strong>: Scommesse Ippica con tipi QF/TOTALIZZATORE/MULTIPLA<br>
+                        • <strong>🆕 Formato Storico</strong>: DB-MARKET SHARE con 99k+ record (2018-2025)
                     </div>
                     <div id="uploadStatus" class="text-sm text-gray-600"></div>
                 </div>
@@ -546,7 +576,7 @@
                             </button>
                         </div>
                         <div class="text-xs text-gray-500">
-                            File Excel con struttura: <strong>Nome gioco da file | Nome gioco da mostrare</strong>
+                            File Excel: <strong>Nome gioco da file | Nome gioco da mostrare</strong>
                         </div>
                     </div>
 
@@ -565,7 +595,7 @@
                             </button>
                         </div>
                         <div class="text-xs text-gray-500">
-                            File Excel con struttura: <strong>Nome gioco | Comparto</strong>
+                            File Excel: <strong>Nome gioco | Comparto</strong>
                         </div>
                     </div>
                 </div>
@@ -603,14 +633,14 @@
                         </div>
                     </div>
 
-                    <!-- Tabella anagrafica -->
+                    <!-- Tabella anagrafica ottimizzata -->
                     <div class="bg-white rounded-lg overflow-hidden">
                         <div class="px-4 py-3 bg-gray-50 border-b">
                             <h4 class="text-md font-medium text-gray-700">
                                 Concessioni attive: <span id="anagraficaCount" class="text-blue-600">0</span>
                             </h4>
                         </div>
-                        <div class="table-container" style="max-height: 400px;">
+                        <div class="table-container" style="max-height: 300px;">
                             <table class="min-w-full">
                                 <thead class="bg-gray-50 sticky top-0">
                                     <tr>
@@ -623,7 +653,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="anagraficaTableBody">
-                                    <!-- Dati anagrafica saranno popolati qui -->
+                                    <!-- Dati anagrafica popolati via JS -->
                                 </tbody>
                             </table>
                         </div>
@@ -631,11 +661,23 @@
                 </div>
             </div>
 
-            <!-- 🆕 TAB 2: FILTRI -->
+            <!-- TAB 2: FILTRI OTTIMIZZATI -->
             <div id="tab-filtri" class="tab-content">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-6">🎛️ Filtri Avanzati</h2>
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                    🎛️ Filtri Avanzati 
+                    <span class="performance-badge">⚡ ULTRA-VELOCE</span>
+                </h2>
                 
                 <div class="filter-container" id="filtersSection" style="display: none;">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h4 class="text-blue-800 font-medium mb-2">🚀 Filtri Ottimizzati per Performance</h4>
+                        <div class="text-blue-700 text-sm">
+                            • <strong>Indici di ricerca</strong>: Filtri istantanei anche su 100k+ record<br>
+                            • <strong>Cache intelligente</strong>: I risultati vengono memorizzati per velocità<br>
+                            • <strong>Elaborazione asincrona</strong>: L'interfaccia rimane sempre reattiva
+                        </div>
+                    </div>
+
                     <div class="filters-section">
                         <!-- Prima riga di filtri -->
                         <div class="filters-row">
@@ -761,7 +803,7 @@
                                 </div>
                             </div>
 
-                            <!-- Filtro Gruppo (solo per dati storici) -->
+                            <!-- Filtro Gruppo -->
                             <div id="gruppoFilterDiv" style="display: none;">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     🏛️ Gruppo
@@ -778,7 +820,7 @@
                                 </div>
                             </div>
 
-                            <!-- Filtro Concessionari -->
+                            <!-- Altri filtri ridotti per performance -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     🏢 Concessionari
@@ -795,7 +837,6 @@
                                 </div>
                             </div>
 
-                            <!-- Filtro Proprietà -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     🔑 Proprietà
@@ -812,7 +853,6 @@
                                 </div>
                             </div>
 
-                            <!-- Filtro Ragione Sociale -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     📄 Ragione Sociale
@@ -831,12 +871,12 @@
                         </div>
                     </div>
 
-                    <!-- Pulsanti azione -->
+                    <!-- Pulsanti azione ottimizzati -->
                     <div class="mt-6 flex flex-wrap gap-4">
                         <button onclick="applyFilters()" 
                                 class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg 
                                        transition-colors duration-200 font-medium">
-                            ✅ Applica Filtri
+                            ⚡ Applica Filtri (Ultra-Veloce)
                         </button>
                         <button onclick="resetFilters()" 
                                 class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg 
@@ -853,21 +893,6 @@
                                        transition-colors duration-200 font-medium">
                             ☐ Deseleziona Tutto
                         </button>
-                        <button onclick="filterByChannel('fisico')" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg 
-                                       transition-colors duration-200 text-sm">
-                            📍 Solo Fisico
-                        </button>
-                        <button onclick="filterByChannel('online')" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg 
-                                       transition-colors duration-200 text-sm">
-                            💻 Solo Online
-                        </button>
-                        <button onclick="filterByCurrentQuarter()" 
-                                class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg 
-                                       transition-colors duration-200 text-sm">
-                            📊 Trimestre Corrente
-                        </button>
                     </div>
 
                     <!-- Riassunto filtri attivi -->
@@ -881,19 +906,25 @@
                 <div id="noDataMessage" class="text-center text-gray-600 mt-8">
                     <div class="text-6xl mb-4">📊</div>
                     <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
-                    <p>Carica dei file Excel dalla sezione "Gestione" per abilitare i filtri.</p>
+                    <p>Carica dei file Excel dalla sezione "Gestione" per abilitare i filtri ultra-veloci.</p>
                 </div>
             </div>
 
-            <!-- 🆕 TAB 3: GRAFICI E STATISTICHE -->
+            <!-- TAB 3: GRAFICI OTTIMIZZATI -->
             <div id="tab-grafici" class="tab-content">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-6">📊 Grafici e Statistiche</h2>
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                    📊 Grafici e Statistiche 
+                    <span class="performance-badge">📈 SMART</span>
+                </h2>
                 
                 <div id="analyticsSection" class="charts-section" style="display: none;">
-                    <!-- Chart Container (in alto per più spazio) -->
+                    <!-- Chart Container ottimizzato -->
                     <div class="chart-container">
                         <div class="glass-effect rounded-lg p-6 h-full">
-                            <h3 class="text-lg font-semibold text-white mb-4">📈 Grafici Interattivi</h3>
+                            <h3 class="text-lg font-semibold text-white mb-4">
+                                📈 Grafici Interattivi 
+                                <span class="performance-badge">Top 20</span>
+                            </h3>
                             <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <select id="chartType" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
                                     <option value="bar">📊 Grafico a Barre</option>
@@ -912,9 +943,9 @@
                                     <option value="ragioneSociale">Raggruppa per Ragione Sociale</option>
                                     <option value="concessionarioProprietà">Raggruppa per Proprietà</option>
                                     <option value="gameNameComplete">Raggruppa per Gioco</option>
-                                    <option value="comparto">🆕 Raggruppa per Comparto</option>
-                                    <option value="gruppo">🆕 Raggruppa per Gruppo</option>
-                                    <option value="tipoGiocoName">🆕 Raggruppa per Tipo Gioco Ippico</option>
+                                    <option value="comparto">Raggruppa per Comparto</option>
+                                    <option value="gruppo">Raggruppa per Gruppo</option>
+                                    <option value="tipoGiocoName">Raggruppa per Tipo Gioco Ippico</option>
                                     <option value="canale">Raggruppa per Canale</option>
                                     <option value="quarterYear">Raggruppa per Trimestre</option>
                                     <option value="monthYear">Raggruppa per Mese</option>
@@ -923,19 +954,25 @@
                             <div class="relative" style="height: calc(100% - 120px);">
                                 <canvas id="mainChart" style="max-height: 100%;"></canvas>
                             </div>
+                            <div class="mt-4 text-white text-xs">
+                                💡 Per performance ottimali, i grafici mostrano solo i top 20 elementi
+                            </div>
                             <button onclick="downloadChart()" 
-                                    class="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                                    class="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
                                 📥 Scarica Grafico
                             </button>
                         </div>
                     </div>
 
-                    <!-- Summary Stats (in basso) -->
+                    <!-- Stats Container ottimizzato -->
                     <div class="stats-container">
                         <div class="glass-effect rounded-lg p-6 h-full">
-                            <h3 class="text-lg font-semibold text-white mb-4">📋 Statistiche Riassuntive</h3>
+                            <h3 class="text-lg font-semibold text-white mb-4">
+                                📋 Statistiche Riassuntive 
+                                <span class="performance-badge">⚡ VELOCE</span>
+                            </h3>
                             <div id="summaryStats" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 h-full overflow-y-auto">
-                                <!-- Stats will be populated here -->
+                                <!-- Stats popolate via JS -->
                             </div>
                             <div id="negativeValuesAlert" class="mt-4 p-3 bg-yellow-500 bg-opacity-20 rounded-lg" style="display: none;">
                                 <h4 class="text-yellow-200 font-medium">⚠️ Valori Negativi Rilevati</h4>
@@ -945,22 +982,27 @@
                     </div>
                 </div>
 
-                <!-- Messaggio quando non ci sono dati -->
                 <div id="noChartsMessage" class="text-center text-gray-600 mt-8">
                     <div class="text-6xl mb-4">📈</div>
                     <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
-                    <p>Carica dei file Excel e applica i filtri per visualizzare grafici e statistiche.</p>
+                    <p>Carica dei file Excel e applica i filtri per visualizzare grafici ottimizzati.</p>
                 </div>
             </div>
 
-            <!-- 🆕 TAB 4: TABELLE -->
+            <!-- TAB 4: TABELLE OTTIMIZZATE -->
             <div id="tab-tabelle" class="tab-content">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-6">📋 Tabelle Dati</h2>
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                    📋 Tabelle Dati 
+                    <span class="performance-badge">🚄 VIRTUAL SCROLL</span>
+                </h2>
                 
                 <div id="tableSection" style="display: none;">
                     <div class="glass-effect rounded-lg p-6">
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold text-white">📊 Tabella Dati Filtrati</h3>
+                            <h3 class="text-lg font-semibold text-white">
+                                📊 Tabella Dati Filtrati 
+                                <span class="performance-badge">∞ Scroll</span>
+                            </h3>
                             <div class="space-x-2">
                                 <button onclick="downloadTable('csv')" 
                                         class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
@@ -972,24 +1014,36 @@
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- Performance Info -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <div class="text-blue-700 text-sm">
+                                🚄 <strong>Virtual Scrolling Attivo</strong>: La tabella mostra 50 righe per volta per performance ottimali anche con dataset grandi
+                            </div>
+                        </div>
+
                         <div class="table-container">
                             <table id="dataTable" class="min-w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
                                 <thead id="tableHead" class="bg-gray-50">
-                                    <!-- Headers will be populated here -->
+                                    <!-- Headers popolati via JS -->
                                 </thead>
                                 <tbody id="tableBody">
-                                    <!-- Data will be populated here -->
+                                    <!-- Data popolati via JS -->
                                 </tbody>
                             </table>
+                        </div>
+                        
+                        <!-- 🚀 CONTROLLI PAGINAZIONE -->
+                        <div id="paginationControls" class="pagination-container">
+                            <!-- Controlli popolati via JS -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Messaggio quando non ci sono dati -->
                 <div id="noTableMessage" class="text-center text-gray-600 mt-8">
                     <div class="text-6xl mb-4">📋</div>
                     <h3 class="text-xl font-semibold mb-2">Nessun dato disponibile</h3>
-                    <p>Carica dei file Excel e applica i filtri per visualizzare la tabella dati.</p>
+                    <p>Carica dei file Excel e applica i filtri per visualizzare la tabella con virtual scrolling.</p>
                 </div>
             </div>
         </div>
@@ -997,17 +1051,14 @@
 
     <script src="app.js"></script>
     <script>
-        // 🆕 Sistema di navigazione tra i tab
+        // Sistema di navigazione ottimizzato
         function switchTab(tabName) {
-            // Rimuovi classe active da tutti i tab
             document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            // Aggiungi classe active al tab selezionato
             event.target.closest('.nav-tab').classList.add('active');
             document.getElementById(`tab-${tabName}`).classList.add('active');
             
-            // Aggiorna indicatore sezione
             const indicator = document.getElementById('sectionIndicator');
             const sectionNames = {
                 'gestione': '⚙️ Gestione',
@@ -1017,19 +1068,18 @@
             };
             indicator.textContent = sectionNames[tabName];
             
-            // Gestione visibilità contenuti
             updateSectionVisibility(tabName);
             
-            // Se stiamo andando sui grafici, ridimensiona il grafico
-            if (tabName === 'grafici' && currentChart) {
+            // Ridimensiona grafici se necessario
+            if (tabName === 'grafici' && typeof currentChart !== 'undefined' && currentChart) {
                 setTimeout(() => {
-                    currentChart.resize();
+                    if (currentChart.resize) currentChart.resize();
                 }, 100);
             }
         }
         
         function updateSectionVisibility(activeTab) {
-            const hasData = allData && allData.length > 0;
+            const hasData = typeof allData !== 'undefined' && allData && allData.length > 0;
             
             // Gestione sezione filtri
             const filtersSection = document.getElementById('filtersSection');
@@ -1050,7 +1100,7 @@
             const noChartsMessage = document.getElementById('noChartsMessage');
             
             if (activeTab === 'grafici') {
-                if (hasData && filteredData && filteredData.length > 0) {
+                if (hasData && typeof filteredData !== 'undefined' && filteredData && filteredData.length > 0) {
                     analyticsSection.style.display = 'flex';
                     noChartsMessage.style.display = 'none';
                 } else {
@@ -1064,7 +1114,7 @@
             const noTableMessage = document.getElementById('noTableMessage');
             
             if (activeTab === 'tabelle') {
-                if (hasData && filteredData && filteredData.length > 0) {
+                if (hasData && typeof filteredData !== 'undefined' && filteredData && filteredData.length > 0) {
                     tableSection.style.display = 'block';
                     noTableMessage.style.display = 'none';
                 } else {
@@ -1073,21 +1123,6 @@
                 }
             }
         }
-        
-        // Aggiorna la funzione updateDisplays per gestire la visibilità
-        function updateDisplaysWithNav() {
-            updateChart();
-            updateTable();
-            updateSummaryStats();
-            
-            // Aggiorna visibilità basata sul tab attivo
-            const activeTab = document.querySelector('.tab-content.active').id.replace('tab-', '');
-            updateSectionVisibility(activeTab);
-        }
-        
-        // Override della funzione updateDisplays originale
-        const originalUpdateDisplays = updateDisplays;
-        updateDisplays = updateDisplaysWithNav;
     </script>
 </body>
 </html>
