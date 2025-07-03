@@ -1,4 +1,4 @@
-// ===== 🚀 GAMING ANALYTICS DASHBOARD v3.0 - SIMPLIFIED =====
+// ===== 🚀 GAMING ANALYTICS DASHBOARD v3.0 - ENHANCED WITH EDITABLE TABLES =====
 
 // ===== CORE VARIABLES =====
 let allData = [];
@@ -13,7 +13,9 @@ let isProcessing = false;
 let anagraficaConcessioni = {};
 let anagraficaData = [];
 let nomiGiochiMapping = {};
+let nomiGiochiData = []; // ⭐ NUOVO: Array per gestire i dati della tabella
 let compartiMapping = {};
+let compartiData = []; // ⭐ NUOVO: Array per gestire i dati della tabella
 
 // Configurazione
 let CHUNK_SIZE = 1000;
@@ -344,7 +346,7 @@ function isNewFormat(jsonData) {
     return periodRow.includes('Periodo da') && !periodRow.includes('Scommesse Ippica');
 }
 
-// ===== PARSING FUNCTIONS =====
+// ===== PARSING FUNCTIONS (mantenute invariate) =====
 function parseHistoricalFormat(jsonData, fileName) {
     const headers = jsonData[0];
     const dataRows = jsonData.slice(1).filter(row => row && row[0] && row[1] && row[2] && row[3]);
@@ -872,7 +874,7 @@ function updateSectionVisibility(tabName) {
     }
 }
 
-// ===== FILTERS =====
+// ===== FILTERS (mantiene tutte le funzioni esistenti) =====
 function populateFilters() {
     if (allData.length === 0) return;
     
@@ -1268,7 +1270,7 @@ function updateDisplays() {
     }
 }
 
-// ===== CHARTS =====
+// ===== CHARTS (mantiene tutte le funzioni esistenti) =====
 function updateChart() {
     const chartType = document.getElementById('chartType')?.value || 'bar';
     const metric = document.getElementById('chartMetric')?.value || 'importoRaccolta';
@@ -1494,7 +1496,7 @@ function updateNegativeValuesAlert(negativeValues) {
     }
 }
 
-// ===== TABLES =====
+// ===== TABLES (mantiene tutte le funzioni esistenti) =====
 function updateTable() {
     if (filteredData.length === 0) return;
     
@@ -1988,29 +1990,30 @@ function exportAnagrafica() {
     XLSX.writeFile(workbook, `anagrafica-concessioni-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-// ===== MAPPATURE =====
+// ===== 🎮 MAPPATURA NOMI GIOCHI - FUNZIONI COMPLETE =====
+
 function loadStoredNomiGiochi() {
     try {
         const stored = localStorage.getItem(NOMI_GIOCHI_STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            nomiGiochiMapping = parsed.data || {};
+            nomiGiochiData = parsed.data || [];
+            buildNomiGiochiMap();
+            updateNomiGiochiTable();
+            console.log(`🎮 Caricata mappatura nomi giochi con ${nomiGiochiData.length} voci`);
         }
     } catch (error) {
         console.error('Errore caricamento nomi giochi:', error);
     }
 }
 
-function loadStoredComparti() {
-    try {
-        const stored = localStorage.getItem(COMPARTI_STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            compartiMapping = parsed.data || {};
+function buildNomiGiochiMap() {
+    nomiGiochiMapping = {};
+    nomiGiochiData.forEach(item => {
+        if (item.nomeOriginale && item.nomeVisualizzato) {
+            nomiGiochiMapping[item.nomeOriginale] = item.nomeVisualizzato;
         }
-    } catch (error) {
-        console.error('Errore caricamento comparti:', error);
-    }
+    });
 }
 
 async function loadNomiGiochiFromExcel() {
@@ -2026,11 +2029,14 @@ async function loadNomiGiochiFromExcel() {
         showStatus('🎮 Caricamento nomi giochi...', 'info');
         const mapping = await readMappingFromExcel(file);
         
-        nomiGiochiMapping = mapping;
-        localStorage.setItem(NOMI_GIOCHI_STORAGE_KEY, JSON.stringify({
-            version: STORAGE_VERSION,
-            data: mapping
+        // Converti mapping in array per la tabella
+        nomiGiochiData = Object.entries(mapping).map(([nomeOriginale, nomeVisualizzato]) => ({
+            nomeOriginale,
+            nomeVisualizzato
         }));
+        
+        saveNomiGiochiToStorage();
+        updateNomiGiochiTable();
         
         if (allData.length > 0) {
             allData = allData.map(item => applyAllMappings(item));
@@ -2039,10 +2045,121 @@ async function loadNomiGiochiFromExcel() {
             applyFilters();
         }
         
-        showStatus(`🎮 Caricati ${Object.keys(mapping).length} nomi giochi`, 'success');
+        showStatus(`🎮 Caricati ${nomiGiochiData.length} nomi giochi`, 'success');
     } catch (error) {
         showStatus(`Errore nomi giochi: ${error.message}`, 'error');
     }
+}
+
+function saveNomiGiochiToStorage() {
+    try {
+        const dataToSave = {
+            version: STORAGE_VERSION,
+            timestamp: new Date().toISOString(),
+            data: nomiGiochiData
+        };
+        localStorage.setItem(NOMI_GIOCHI_STORAGE_KEY, JSON.stringify(dataToSave));
+        buildNomiGiochiMap();
+    } catch (error) {
+        console.error('Errore salvataggio nomi giochi:', error);
+    }
+}
+
+function updateNomiGiochiTable() {
+    const tableBody = document.getElementById('nomiGiochiTableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = nomiGiochiData.map((item, index) => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <input type="text" value="${item.nomeOriginale}" 
+                       onchange="updateNomiGiochiItem(${index}, 'nomeOriginale', this.value)"
+                       class="w-full p-1 border rounded" placeholder="Nome originale">
+            </td>
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <input type="text" value="${item.nomeVisualizzato}" 
+                       onchange="updateNomiGiochiItem(${index}, 'nomeVisualizzato', this.value)"
+                       class="w-full p-1 border rounded" placeholder="Nome da visualizzare">
+            </td>
+            <td class="px-4 py-2 text-sm">
+                <button onclick="deleteNomiGiochiItem(${index})" 
+                        class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">
+                    Elimina
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    const countElement = document.getElementById('nomiGiochiCount');
+    if (countElement) countElement.textContent = nomiGiochiData.length;
+}
+
+function updateNomiGiochiItem(index, field, value) {
+    if (nomiGiochiData[index]) {
+        nomiGiochiData[index][field] = value;
+        saveNomiGiochiToStorage();
+        
+        if (allData.length > 0) {
+            allData = allData.map(item => applyAllMappings(item));
+            saveDataToStorage();
+            populateFilters();
+            applyFilters();
+        }
+    }
+}
+
+function deleteNomiGiochiItem(index) {
+    if (confirm('Elimina questa mappatura gioco?')) {
+        nomiGiochiData.splice(index, 1);
+        saveNomiGiochiToStorage();
+        updateNomiGiochiTable();
+    }
+}
+
+function addNewNomiGiochiItem() {
+    const newItem = {
+        nomeOriginale: '',
+        nomeVisualizzato: ''
+    };
+    nomiGiochiData.push(newItem);
+    updateNomiGiochiTable();
+}
+
+function exportNomiGiochi() {
+    const worksheet = XLSX.utils.json_to_sheet(nomiGiochiData.map(item => ({
+        'Nome Originale': item.nomeOriginale,
+        'Nome Visualizzato': item.nomeVisualizzato
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'MAPPATURA NOMI GIOCHI');
+    XLSX.writeFile(workbook, `mappatura-nomi-giochi-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ===== 🏢 MAPPATURA COMPARTI - FUNZIONI COMPLETE =====
+
+function loadStoredComparti() {
+    try {
+        const stored = localStorage.getItem(COMPARTI_STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            compartiData = parsed.data || [];
+            buildCompartiMap();
+            updateCompartiTable();
+            console.log(`🏢 Caricata mappatura comparti con ${compartiData.length} voci`);
+        }
+    } catch (error) {
+        console.error('Errore caricamento comparti:', error);
+    }
+}
+
+function buildCompartiMap() {
+    compartiMapping = {};
+    compartiData.forEach(item => {
+        if (item.nomeGioco && item.comparto) {
+            compartiMapping[item.nomeGioco] = item.comparto;
+        }
+    });
 }
 
 async function loadCompartiFromExcel() {
@@ -2058,11 +2175,14 @@ async function loadCompartiFromExcel() {
         showStatus('🏢 Caricamento comparti...', 'info');
         const mapping = await readMappingFromExcel(file);
         
-        compartiMapping = mapping;
-        localStorage.setItem(COMPARTI_STORAGE_KEY, JSON.stringify({
-            version: STORAGE_VERSION,
-            data: mapping
+        // Converti mapping in array per la tabella
+        compartiData = Object.entries(mapping).map(([nomeGioco, comparto]) => ({
+            nomeGioco,
+            comparto
         }));
+        
+        saveCompartiToStorage();
+        updateCompartiTable();
         
         if (allData.length > 0) {
             allData = allData.map(item => applyAllMappings(item));
@@ -2071,11 +2191,98 @@ async function loadCompartiFromExcel() {
             applyFilters();
         }
         
-        showStatus(`🏢 Caricati ${Object.keys(mapping).length} comparti`, 'success');
+        showStatus(`🏢 Caricati ${compartiData.length} comparti`, 'success');
     } catch (error) {
         showStatus(`Errore comparti: ${error.message}`, 'error');
     }
 }
+
+function saveCompartiToStorage() {
+    try {
+        const dataToSave = {
+            version: STORAGE_VERSION,
+            timestamp: new Date().toISOString(),
+            data: compartiData
+        };
+        localStorage.setItem(COMPARTI_STORAGE_KEY, JSON.stringify(dataToSave));
+        buildCompartiMap();
+    } catch (error) {
+        console.error('Errore salvataggio comparti:', error);
+    }
+}
+
+function updateCompartiTable() {
+    const tableBody = document.getElementById('compartiTableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = compartiData.map((item, index) => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <input type="text" value="${item.nomeGioco}" 
+                       onchange="updateCompartiItem(${index}, 'nomeGioco', this.value)"
+                       class="w-full p-1 border rounded" placeholder="Nome gioco">
+            </td>
+            <td class="px-4 py-2 text-sm text-gray-900">
+                <input type="text" value="${item.comparto}" 
+                       onchange="updateCompartiItem(${index}, 'comparto', this.value)"
+                       class="w-full p-1 border rounded" placeholder="Comparto">
+            </td>
+            <td class="px-4 py-2 text-sm">
+                <button onclick="deleteCompartiItem(${index})" 
+                        class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">
+                    Elimina
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    const countElement = document.getElementById('compartiCount');
+    if (countElement) countElement.textContent = compartiData.length;
+}
+
+function updateCompartiItem(index, field, value) {
+    if (compartiData[index]) {
+        compartiData[index][field] = value;
+        saveCompartiToStorage();
+        
+        if (allData.length > 0) {
+            allData = allData.map(item => applyAllMappings(item));
+            saveDataToStorage();
+            populateFilters();
+            applyFilters();
+        }
+    }
+}
+
+function deleteCompartiItem(index) {
+    if (confirm('Elimina questa mappatura comparto?')) {
+        compartiData.splice(index, 1);
+        saveCompartiToStorage();
+        updateCompartiTable();
+    }
+}
+
+function addNewCompartiItem() {
+    const newItem = {
+        nomeGioco: '',
+        comparto: ''
+    };
+    compartiData.push(newItem);
+    updateCompartiTable();
+}
+
+function exportComparti() {
+    const worksheet = XLSX.utils.json_to_sheet(compartiData.map(item => ({
+        'Nome Gioco': item.nomeGioco,
+        'Comparto': item.comparto
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'MAPPATURA COMPARTI');
+    XLSX.writeFile(workbook, `mappatura-comparti-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+// ===== HELPER MAPPING FUNCTIONS =====
 
 function readMappingFromExcel(file) {
     return new Promise((resolve, reject) => {
@@ -2223,4 +2430,4 @@ async function benchmarkPerformance() {
 }
 
 // ===== FINAL LOG =====
-console.log('🚀 Gaming Analytics Dashboard v3.0 Simplified - Ready!');
+console.log('🚀 Gaming Analytics Dashboard v3.0 Enhanced - Ready with Editable Tables!');
