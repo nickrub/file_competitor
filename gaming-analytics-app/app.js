@@ -49,14 +49,41 @@ const channelNames = {
 // ===== INIZIALIZZAZIONE =====
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Gaming Analytics Dashboard v3.0 - Starting...');
+    
     try {
+        // 1. Setup event listeners
         setupEventListeners();
-        loadStoredData();
+        
+        // 2. Carica dati principali
+        console.log('📂 Caricamento dati principali...');
+        const hasMainData = loadStoredData();
+        
+        // 3. Carica mappature
+        console.log('📖 Caricamento mappature...');
         loadStoredAnagrafica();
         loadStoredNomiGiochi();
         loadStoredComparti();
+        
+        // 4. Aggiorna stato e UI
         updateDataStatus();
-        showStatus('💡 Sistema pronto! Carica i file Excel per iniziare.', 'info');
+        
+        // 5. Attendi che il DOM sia completamente renderizzato, poi aggiorna le tabelle
+        setTimeout(() => {
+            console.log('🔄 Aggiornamento tabelle mappature...');
+            updateAnagraficaTable();
+            updateNomiGiochiTable();
+            updateCompartiTable();
+        }, 300);
+        
+        // 6. Messaggio finale
+        if (hasMainData) {
+            showStatus('✅ Sistema caricato con successo con dati esistenti!', 'success');
+        } else {
+            showStatus('💡 Sistema pronto! Carica i file Excel per iniziare.', 'info');
+        }
+        
+        console.log('✅ Inizializzazione completata!');
+        
     } catch (error) {
         console.error('❌ Errore inizializzazione:', error);
         showStatus('❌ Errore nell\'inizializzazione del sistema', 'error');
@@ -686,6 +713,7 @@ function saveDataToStorage() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
         showPersistenceIndicator();
         updateDataStatus();
+        console.log(`💾 Salvati ${allData.length} record`);
     } catch (error) {
         console.error('❌ Errore salvataggio:', error);
         showStatus('❌ Errore nel salvataggio dati', 'error');
@@ -697,21 +725,29 @@ function loadStoredData() {
         const storedData = localStorage.getItem(STORAGE_KEY);
         if (storedData) {
             const parsed = JSON.parse(storedData);
-            if (parsed.data && Array.isArray(parsed.data)) {
+            if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
                 allData = parsed.data;
                 console.log(`💾 Caricati ${allData.length} record salvati`);
                 
-                if (allData.length > 0) {
-                    populateFilters();
-                    showStatus(`📂 Caricati ${allData.length} record salvati`, 'success');
-                    showFiltersSection();
-                    setTimeout(() => applyFilters(), 100);
-                }
+                // Popolamento filtri e UI
+                populateFilters();
+                showStatus(`📂 Caricati ${allData.length} record salvati`, 'success');
+                showFiltersSection();
+                
+                // Applica filtri con delay per permettere il rendering
+                setTimeout(() => {
+                    applyFilters();
+                }, 200);
+                
                 updateDataStatus();
+                return true;
             }
         }
+        console.log('💾 Nessun dato salvato trovato');
+        return false;
     } catch (error) {
-        console.error('❌ Errore caricamento:', error);
+        console.error('❌ Errore caricamento dati:', error);
+        return false;
     }
 }
 
@@ -800,6 +836,8 @@ function showPersistenceIndicator() {
 
 // ===== NAVIGATION =====
 function switchTab(tabName) {
+    console.log(`🔄 Cambiando tab a: ${tabName}`);
+    
     // Rimuovi active da tutti i tab
     document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -826,6 +864,16 @@ function switchTab(tabName) {
         
         // Aggiorna sezioni visibili basate sul tab
         updateSectionVisibility(tabName);
+        
+        // ⭐ NUOVO: Aggiorna le tabelle delle mappature quando si va nella gestione
+        if (tabName === 'gestione') {
+            setTimeout(() => {
+                console.log('🔄 Aggiornamento tabelle mappature per tab gestione...');
+                updateAnagraficaTable();
+                updateNomiGiochiTable();
+                updateCompartiTable();
+            }, 100);
+        }
     }
 }
 
@@ -1997,23 +2045,44 @@ function loadStoredNomiGiochi() {
         const stored = localStorage.getItem(NOMI_GIOCHI_STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            nomiGiochiData = parsed.data || [];
-            buildNomiGiochiMap();
-            updateNomiGiochiTable();
-            console.log(`🎮 Caricata mappatura nomi giochi con ${nomiGiochiData.length} voci`);
+            if (parsed.data && Array.isArray(parsed.data)) {
+                nomiGiochiData = parsed.data;
+                buildNomiGiochiMap();
+                
+                // Aggiorna la tabella solo se esiste l'elemento DOM
+                setTimeout(() => {
+                    updateNomiGiochiTable();
+                }, 100);
+                
+                console.log(`🎮 Caricata mappatura nomi giochi con ${nomiGiochiData.length} voci`);
+                return true;
+            }
         }
+        
+        // Se non ci sono dati, inizializza array vuoto
+        nomiGiochiData = [];
+        nomiGiochiMapping = {};
+        updateNomiGiochiTable();
+        console.log('🎮 Nessuna mappatura nomi giochi trovata');
+        return false;
     } catch (error) {
-        console.error('Errore caricamento nomi giochi:', error);
+        console.error('❌ Errore caricamento nomi giochi:', error);
+        nomiGiochiData = [];
+        nomiGiochiMapping = {};
+        return false;
     }
 }
 
 function buildNomiGiochiMap() {
     nomiGiochiMapping = {};
-    nomiGiochiData.forEach(item => {
-        if (item.nomeOriginale && item.nomeVisualizzato) {
-            nomiGiochiMapping[item.nomeOriginale] = item.nomeVisualizzato;
-        }
-    });
+    if (Array.isArray(nomiGiochiData)) {
+        nomiGiochiData.forEach(item => {
+            if (item && item.nomeOriginale && item.nomeVisualizzato) {
+                nomiGiochiMapping[item.nomeOriginale] = item.nomeVisualizzato;
+            }
+        });
+    }
+    console.log(`🎮 Costruita mappa nomi giochi: ${Object.keys(nomiGiochiMapping).length} voci`);
 }
 
 async function loadNomiGiochiFromExcel() {
@@ -2143,23 +2212,44 @@ function loadStoredComparti() {
         const stored = localStorage.getItem(COMPARTI_STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            compartiData = parsed.data || [];
-            buildCompartiMap();
-            updateCompartiTable();
-            console.log(`🏢 Caricata mappatura comparti con ${compartiData.length} voci`);
+            if (parsed.data && Array.isArray(parsed.data)) {
+                compartiData = parsed.data;
+                buildCompartiMap();
+                
+                // Aggiorna la tabella solo se esiste l'elemento DOM
+                setTimeout(() => {
+                    updateCompartiTable();
+                }, 100);
+                
+                console.log(`🏢 Caricata mappatura comparti con ${compartiData.length} voci`);
+                return true;
+            }
         }
+        
+        // Se non ci sono dati, inizializza array vuoto
+        compartiData = [];
+        compartiMapping = {};
+        updateCompartiTable();
+        console.log('🏢 Nessuna mappatura comparti trovata');
+        return false;
     } catch (error) {
-        console.error('Errore caricamento comparti:', error);
+        console.error('❌ Errore caricamento comparti:', error);
+        compartiData = [];
+        compartiMapping = {};
+        return false;
     }
 }
 
 function buildCompartiMap() {
     compartiMapping = {};
-    compartiData.forEach(item => {
-        if (item.nomeGioco && item.comparto) {
-            compartiMapping[item.nomeGioco] = item.comparto;
-        }
-    });
+    if (Array.isArray(compartiData)) {
+        compartiData.forEach(item => {
+            if (item && item.nomeGioco && item.comparto) {
+                compartiMapping[item.nomeGioco] = item.comparto;
+            }
+        });
+    }
+    console.log(`🏢 Costruita mappa comparti: ${Object.keys(compartiMapping).length} voci`);
 }
 
 async function loadCompartiFromExcel() {
@@ -2431,3 +2521,8 @@ async function benchmarkPerformance() {
 
 // ===== FINAL LOG =====
 console.log('🚀 Gaming Analytics Dashboard v3.0 Enhanced - Ready with Editable Tables!');
+console.log('📋 Funzioni disponibili:');
+console.log('  - debugSystem(): Visualizza stato completo del sistema');
+console.log('  - Tutte le funzioni CRUD per anagrafica, nomi giochi e comparti');
+console.log('  - Sistema di caricamento e salvataggio ottimizzato');
+console.log('✅ Sistema completamente inizializzato!');
